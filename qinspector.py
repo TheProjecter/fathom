@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
 from sys import argv
-
-from PyQt4.QtCore import SIGNAL
+from PyQt4.QtCore import (SIGNAL, QSettings, QDir)
+w
 from PyQt4.QtGui import (QWidget, QMainWindow, QApplication, QDialog, QAction, 
-                         QRadioButton, QVBoxLayout, QHBoxLayout, QLineEdit)
+                         QRadioButton, QVBoxLayout, QHBoxLayout, QLineEdit,
+                         QGridLayout, QLabel, QFileSystemModel, QTreeView)
 
 
 class QVerticalWidget(QWidget):
@@ -27,18 +28,37 @@ class QConnectionDialog(QDialog):
     Dialog for gathering information for connecting to the database.
     '''
     
-    class PostgresWidget(QVerticalWidget):
+    class PostgresWidget(QWidget):
         
         def __init__(self, parent=None):
-            QVerticalWidget.__init__(self, parent)
-            self.layout().addWidget(QLineEdit('fff'))
+            QWidget.__init__(self, parent)
+            self.setLayout(QGridLayout())
+            self.fields = []
+            
+            self.layout().addWidget(QLabel(self.tr("Database name:")), 0, 0)
+            self.databaseName = QLineEdit()
+            self.layout().addWidget(self.databaseName, 0, 1)
+            self.layout().addWidget(QLabel(self.tr("User name:")), 1, 0)
+            self.userName = QLineEdit()
+            self.layout().addWidget(self.userName, 1, 1)
+            
+        def getDatabaseString(self):
+            result = []
+            for label, field in (('dbname', self.databaseName),
+                                 ('user', self.userName)):
+                if field.text():
+                    result.append('%s=%s' % label, field.text())
+            return ' '.join(result)
 
 
-    class SqliteWidget(QVerticalWidget):
+    class SqliteWidget(QWidget):
         
         def __init__(self, parent=None):
-            QVerticalWidget.__init__(self, parent)
-            self.layout().addWidget(QLineEdit('ggg'))
+            QWidget.__init__(self, parent)
+            model = QFileSystemModel()
+            model.setRootPath(QDir.currentPath())
+            view = QTreeView(parent=self);
+            view.setModel(model)
 
     
     def __init__(self, parent=None):
