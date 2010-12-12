@@ -1,11 +1,33 @@
 #!/usr/bin/python
 
 from sys import argv
-from PyQt4.QtCore import (SIGNAL, QSettings, QDir)
-w
+
+from PyQt4.QtCore import (SIGNAL, QSettings, QDir, Qt, QVariant, QPoint, QSize)
 from PyQt4.QtGui import (QWidget, QMainWindow, QApplication, QDialog, QAction, 
                          QRadioButton, QVBoxLayout, QHBoxLayout, QLineEdit,
-                         QGridLayout, QLabel, QFileSystemModel, QTreeView)
+                         QGridLayout, QLabel, QFileSystemModel, QTreeView,
+                         QStackedWidget, QSizePolicy, QPushButton)
+
+
+class WithSettings:
+
+    def __init__(self, company, product):
+        self.__company = company
+        self.__product = product
+        self.readSettings()
+
+    def closeEvent(self, event):
+        self.writeSettings()
+
+    def readSettings(self):
+        settings = QSettings(self.__company, self.__product)
+        self.move(settings.value("position", QVariant(QPoint(200, 200))).toPoint())
+        self.resize(settings.value("size", QVariant(QSize(400, 400))).toSize())
+            
+    def writeSettings(self):
+        settings = QSettings(self.__company, self.__product)
+        settings.setValue("position", QVariant(self.pos()))
+        settings.setValue("size", QVariant(self.size()))
 
 
 class QVerticalWidget(QWidget):
@@ -22,26 +44,72 @@ class QHorizontalWidget(QWidget):
         self.setLayout(QHBoxLayout())
 
 
+class QOkCancelWidget(QWidget):
+
+        def __init__(self, okFunction=None, cancelFunction=None, parent=None):
+                QWidget.__init__(self, parent)
+                self.setLayout(QHBoxLayout())
+                self.__ok = QPushButton('Ok')
+                self.__cancel = QPushButton('Cancel')
+                self.layout().addStretch()
+                self.layout().addWidget(self.__ok)
+                self.layout().addWidget(self.__cancel)
+                
+                self.connect(self.__ok, SIGNAL('pressed()'), self.okPressed)
+                if okFunction is not None:
+                        self.connect(self.__ok, SIGNAL('pressed()'), okFunction)
+                self.connect(self.__cancel, SIGNAL('pressed()'), self.cancelPressed)
+                if cancelFunction is not None:
+                        self.connect(self.__cancel, SIGNAL('pressed()'), cancelFunction)
+                
+        def ok(self):
+                return self.__ok
+                
+        def cancel(self):
+                return self.__cancel
+                
+        def okPressed(self):
+                self.emit(SIGNAL('okPressed'))
+
+        def cancelPressed(self):
+                self.emit(SIGNAL('cancelPressed'))
+
+        def setDefault(self, value):
+                self.__ok.setDefault(value)
+                self.__cancel.setDefault(value)         
+
+        def setAutoDefault(self, value):
+                self.__ok.setAutoDefault(value)
+                self.__cancel.setAutoDefault(value)  
+
+
 class QConnectionDialog(QDialog):
     
     '''
     Dialog for gathering information for connecting to the database.
     '''
     
-    class PostgresWidget(QWidget):
+    class PostgresWidget(QVerticalWidget):
+        
+        PARAMS = (("Host:", "host"), ("Port:", "port"),
+                  ("Database name:", "databaseName"), 
+                  ("User name:", "userName"), ("Password:", "password")) 
         
         def __init__(self, parent=None):
-            QWidget.__init__(self, parent)
-            self.setLayout(QGridLayout())
-            self.fields = []
+            QVerticalWidget.__init__(self, parent)
+            grid = QGridLayout()
+            self.layout().addLayout(grid)
+            self.layout().addStretch()
             
-            self.layout().addWidget(QLabel(self.tr("Database name:")), 0, 0)
-            self.databaseName = QLineEdit()
-            self.layout().addWidget(self.databaseName, 0, 1)
-            self.layout().addWidget(QLabel(self.tr("User name:")), 1, 0)
-            self.userName = QLineEdit()
-            self.layout().addWidget(self.userName, 1, 1)
-            
+            for index, (label, field) in enumerate(self.PARAMS):
+                label = QLabel(self.tr(label))
+                grid.addWidget(label, index, 0, Qt.AlignLeft | Qt.AlignTop)            
+                setattr(self, field, QLineEdit())
+                grid.addWidget(getattr(self, field), index, 1)
+                
+        def validate(self):
+            return bool(self.databaseName.text())
+                
         def getDatabaseString(self):
             result = []
             for label, field in (('dbname', self.databaseName),
@@ -51,22 +119,34 @@ class QConnectionDialog(QDialog):
             return ' '.join(result)
 
 
-    class SqliteWidget(QWidget):
+    class SqliteWidget(QVerticalWidget):
         
         def __init__(self, parent=None):
-            QWidget.__init__(self, parent)
+            QVerticalWidget.__init__(self, parent)
             model = QFileSystemModel()
             model.setRootPath(QDir.currentPath())
+            index = model.index('/')
             view = QTreeView(parent=self);
             view.setModel(model)
+            for i in range(1, 4):
+                view.header().hideSection(i)
+            self.layout().addWidget(view)
+            
+        def validate(self):
+            False
+            
+        def getDatabaseString(self):
+            pass
 
     
     def __init__(self, parent=None):
         QDialog.__init__(self)
+        self.setLayout(QVBoxLayout())
         
         layout = QHBoxLayout()
         radioLayout = QVBoxLayout()
         
+        radioLayout.addWidget(QLabel(self.tr("Database type:")))
         options = (('postgres', 'PostgreSQL', 'postgresChosen'), 
                    ('sqlite', 'sqlite3', 'sqliteChosen'),
                    ('oracle', 'Oracle', 'oracleChosen'),
@@ -79,42 +159,50 @@ class QConnectionDialog(QDialog):
         self.oracle.setDisabled(True)
         self.mysql.setDisabled(True)
         
+        radioLayout.addStretch()
         layout.addLayout(radioLayout)
-        self.setLayout(layout)
 
         self.currentWidget = None
         self.postgres.toggle()
-        self.postgresChosen()
+        
+        self.stackedWidget = QStackedWidget()
+        self.stackedWidget.addWidget(self.PostgresWidget())
+        self.stackedWidget.addWidget(self.SqliteWidget())
+        layout.addWidget(self.stackedWidget)
+        self.resize(600, 300)        
+        self.layout().addLayout(layout)
+        okCancel = QOkCancelWidget(okFunction=self.accept, 
+                                   cancelFunction=self.reject)
+        self.layout().addWidget(okCancel)
 
     def postgresChosen(self):
-        if self.currentWidget is not None:
-            self.currentWidget.setParent(None)
-        self.currentWidget = self.PostgresWidget()
-        self.layout().addWidget(self.currentWidget)
+        self.stackedWidget.setCurrentIndex(0);
         
     def sqliteChosen(self):
-        if self.currentWidget is not None:
-            self.currentWidget.setParent(None)
-        self.currentWidget.setParent(None)
-        self.currentWidget = self.SqliteWidget()
-        self.layout().addWidget(self.currentWidget)
+        self.stackedWidget.setCurrentIndex(1);
     
     def oracleChosen(self):
-        '''TODO: implement'''
+        self.stackedWidget.setCurrentIndex(2);
         
     def mysqlChosen(self):
-        '''TODO: implement'''
+        self.stackedWidget.setCurrentIndex(3);
+        
+    def accept(self):
+        if self.stackedWidget.currentWidget().validate():
+            QDialog.accept(self)
 
 
-class MainWindow(QMainWindow):
+class MainWindow(QMainWindow, WithSettings):
     
     def __init__(self):
         QMainWindow.__init__(self)
+        WithSettings.__init__(self, '', 'dbinspect')
         self.createMenus()
         
     def createMenus(self):
         menu = self.menuBar().addMenu(self.tr('Connection'))
         action = QAction(self.tr('&New..'), self)
+        action.setShortcut('Ctrl+N')
         self.connect(action, SIGNAL('triggered()'), self.newConnection)
         menu.addAction(action)
         
@@ -125,8 +213,10 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(argv)
-    window = MainWindow()
-    window.show()
+    # window = MainWindow()
+    # window.show()
+    dialog = QConnectionDialog()
+    dialog.show()
     app.exec_()
 
 if __name__ == "__main__":
