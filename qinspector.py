@@ -89,24 +89,26 @@ class QConnectionDialog(QDialog):
     Dialog for gathering information for connecting to the database.
     '''
     
-    class PostgresWidget(QVerticalWidget):
+    class PostgresWidget(QWidget):
         
         PARAMS = (("Host:", "host"), ("Port:", "port"),
                   ("Database name:", "databaseName"), 
                   ("User name:", "userName"), ("Password:", "password")) 
         
         def __init__(self, parent=None):
-            QVerticalWidget.__init__(self, parent)
-            grid = QGridLayout()
-            self.layout().addLayout(grid)
-            self.layout().addStretch()
+            QWidget.__init__(self, parent)
             
+            grid = QGridLayout()            
             for index, (label, field) in enumerate(self.PARAMS):
                 label = QLabel(self.tr(label))
                 grid.addWidget(label, index, 0, Qt.AlignLeft | Qt.AlignTop)            
                 setattr(self, field, QLineEdit())
                 grid.addWidget(getattr(self, field), index, 1)
-                
+
+            self.setLayout(QVBoxLayout())
+            self.layout().addLayout(grid)
+            self.layout().addStretch()
+
         def validate(self):
             return bool(self.databaseName.text())
                 
@@ -119,17 +121,20 @@ class QConnectionDialog(QDialog):
             return ' '.join(result)
 
 
-    class SqliteWidget(QVerticalWidget):
+    class SqliteWidget(QWidget):
         
         def __init__(self, parent=None):
-            QVerticalWidget.__init__(self, parent)
+            QWidget.__init__(self, parent)
+            
             model = QFileSystemModel()
             model.setRootPath(QDir.currentPath())
-            index = model.index('/')
+            
             view = QTreeView(parent=self);
             view.setModel(model)
             for i in range(1, 4):
                 view.header().hideSection(i)
+            
+            self.setLayout(QVBoxLayout())
             self.layout().addWidget(view)
             
         def validate(self):
@@ -141,11 +146,17 @@ class QConnectionDialog(QDialog):
     
     def __init__(self, parent=None):
         QDialog.__init__(self)
-        self.setLayout(QVBoxLayout())
-        
-        layout = QHBoxLayout()
+
+        # preparing whole layout of dialog
+        mainLayout = QVBoxLayout()
+        widgetsLayout = QHBoxLayout()
+        buttonsLayout = QHBoxLayout()
         radioLayout = QVBoxLayout()
+        mainLayout.addLayout(widgetsLayout)
+        mainLayout.addLayout(buttonsLayout)
+        widgetsLayout.addLayout(radioLayout)
         
+        # preparing radio buttons for choosing DBMS type
         radioLayout.addWidget(QLabel(self.tr("Database type:")))
         options = (('postgres', 'PostgreSQL', 'postgresChosen'), 
                    ('sqlite', 'sqlite3', 'sqliteChosen'),
@@ -158,23 +169,25 @@ class QConnectionDialog(QDialog):
             setattr(self, field, button)
         self.oracle.setDisabled(True)
         self.mysql.setDisabled(True)
-        
         radioLayout.addStretch()
-        layout.addLayout(radioLayout)
-
-        self.currentWidget = None
         self.postgres.toggle()
         
+        # preparing stack widgets for database connection details
         self.stackedWidget = QStackedWidget()
         self.stackedWidget.addWidget(self.PostgresWidget())
         self.stackedWidget.addWidget(self.SqliteWidget())
-        layout.addWidget(self.stackedWidget)
-        self.resize(600, 300)        
-        self.layout().addLayout(layout)
-        okCancel = QOkCancelWidget(okFunction=self.accept, 
-                                   cancelFunction=self.reject)
-        self.layout().addWidget(okCancel)
+        widgetsLayout.addWidget(self.stackedWidget)
 
+        # preparing ok and cancel buttons at the bottom
+        buttonsLayout.addStretch()
+        for label, method in ('OK', self.accept), ('Cancel', self.reject):
+            button = QPushButton(self.tr(label))
+            self.connect(button, SIGNAL('pressed()'), method)
+            buttonsLayout.addWidget(button)
+        
+        self.setLayout(mainLayout)
+        self.resize(600, 300)
+        
     def postgresChosen(self):
         self.stackedWidget.setCurrentIndex(0);
         
