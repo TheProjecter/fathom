@@ -1,13 +1,13 @@
 #!/usr/bin/python
 
 from sys import argv
+from os.path import join
 
 from PyQt4.QtCore import (SIGNAL, QSettings, QDir, Qt, QVariant, QPoint, QSize)
 from PyQt4.QtGui import (QWidget, QMainWindow, QApplication, QDialog, QAction, 
                          QRadioButton, QVBoxLayout, QHBoxLayout, QLineEdit,
                          QGridLayout, QLabel, QFileSystemModel, QTreeView,
                          QStackedWidget, QSizePolicy, QPushButton)
-
 
 class WithSettings:
 
@@ -28,59 +28,6 @@ class WithSettings:
         settings = QSettings(self.__company, self.__product)
         settings.setValue("position", QVariant(self.pos()))
         settings.setValue("size", QVariant(self.size()))
-
-
-class QVerticalWidget(QWidget):
-    
-    def __init__(self, *args, **kwargs):
-        QWidget.__init__(self, *args, **kwargs)
-        self.setLayout(QVBoxLayout())
-        
-        
-class QHorizontalWidget(QWidget):
-    
-    def __init__(self, *args, **kwargs):
-        QWidget.__init__(self, *args, **kwargs)
-        self.setLayout(QHBoxLayout())
-
-
-class QOkCancelWidget(QWidget):
-
-        def __init__(self, okFunction=None, cancelFunction=None, parent=None):
-                QWidget.__init__(self, parent)
-                self.setLayout(QHBoxLayout())
-                self.__ok = QPushButton('Ok')
-                self.__cancel = QPushButton('Cancel')
-                self.layout().addStretch()
-                self.layout().addWidget(self.__ok)
-                self.layout().addWidget(self.__cancel)
-                
-                self.connect(self.__ok, SIGNAL('pressed()'), self.okPressed)
-                if okFunction is not None:
-                        self.connect(self.__ok, SIGNAL('pressed()'), okFunction)
-                self.connect(self.__cancel, SIGNAL('pressed()'), self.cancelPressed)
-                if cancelFunction is not None:
-                        self.connect(self.__cancel, SIGNAL('pressed()'), cancelFunction)
-                
-        def ok(self):
-                return self.__ok
-                
-        def cancel(self):
-                return self.__cancel
-                
-        def okPressed(self):
-                self.emit(SIGNAL('okPressed'))
-
-        def cancelPressed(self):
-                self.emit(SIGNAL('cancelPressed'))
-
-        def setDefault(self, value):
-                self.__ok.setDefault(value)
-                self.__cancel.setDefault(value)         
-
-        def setAutoDefault(self, value):
-                self.__ok.setAutoDefault(value)
-                self.__cancel.setAutoDefault(value)  
 
 
 class QConnectionDialog(QDialog):
@@ -126,23 +73,29 @@ class QConnectionDialog(QDialog):
         def __init__(self, parent=None):
             QWidget.__init__(self, parent)
             
-            model = QFileSystemModel()
-            model.setRootPath(QDir.currentPath())
+            self.model = QFileSystemModel()
+            self.model.setRootPath(QDir.currentPath())
             
-            view = QTreeView(parent=self);
-            view.setModel(model)
+            self.view = QTreeView(parent=self);
+            self.view.setModel(self.model)
             for i in range(1, 4):
-                view.header().hideSection(i)
+                self.view.header().hideSection(i)
             
             self.setLayout(QVBoxLayout())
-            self.layout().addWidget(view)
+            self.layout().addWidget(self.view)
             
         def validate(self):
-            False
+            index = self.view.currentIndex()
+            return bool(index.isValid()) and not self.model.isDir(index)
             
         def getDatabaseString(self):
-            pass
-
+            index = self.view.currentIndex()
+            result = []
+            while index.isValid():
+                result.append(unicode(index.data().toString()))
+                index = index.parent()
+            result.reverse()
+            return join(*result)
     
     def __init__(self, parent=None):
         QDialog.__init__(self)
@@ -203,6 +156,9 @@ class QConnectionDialog(QDialog):
     def accept(self):
         if self.stackedWidget.currentWidget().validate():
             QDialog.accept(self)
+            
+    def getConnectionString(self):
+        return self.stackedWidget.currentWidget().getDatabaseString()
 
 
 class MainWindow(QMainWindow, WithSettings):
@@ -231,7 +187,7 @@ def main():
     dialog = QConnectionDialog()
     dialog.show()
     app.exec_()
+    print dialog.getConnectionString()
 
 if __name__ == "__main__":
     main()
-
