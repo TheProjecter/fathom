@@ -3,11 +3,15 @@
 from sys import argv
 from os.path import join
 
-from PyQt4.QtCore import (SIGNAL, QSettings, QDir, Qt, QVariant, QPoint, QSize)
+from PyQt4.QtCore import (SIGNAL, QSettings, QDir, Qt, QVariant, QPoint, QSize,
+                          QRectF, QSizeF)
 from PyQt4.QtGui import (QWidget, QMainWindow, QApplication, QDialog, QAction, 
                          QRadioButton, QVBoxLayout, QHBoxLayout, QLineEdit,
                          QGridLayout, QLabel, QFileSystemModel, QTreeView,
-                         QStackedWidget, QSizePolicy, QPushButton)
+                         QStackedWidget, QSizePolicy, QPushButton, 
+                         QGraphicsView, QGraphicsScene, QGraphicsItem)
+                         
+from pydbinspect import SqliteInspector, PostgresInspector
 
 class WithSettings:
 
@@ -59,13 +63,13 @@ class QConnectionDialog(QDialog):
         def validate(self):
             return bool(self.databaseName.text())
                 
-        def getDatabaseString(self):
+        def getDatabaseParams(self):
             result = []
             for label, field in (('dbname', self.databaseName),
                                  ('user', self.userName)):
                 if field.text():
-                    result.append('%s=%s' % label, field.text())
-            return ' '.join(result)
+                    result.append('%s=%s' % (label, field.text()))
+            return 'PostgreSQL', ' '.join(result)
 
 
     class SqliteWidget(QWidget):
@@ -95,7 +99,7 @@ class QConnectionDialog(QDialog):
                 result.append(unicode(index.data().toString()))
                 index = index.parent()
             result.reverse()
-            return join(*result)
+            return 'sqlite3', join(*result)
     
     def __init__(self, parent=None):
         QDialog.__init__(self)
@@ -157,16 +161,33 @@ class QConnectionDialog(QDialog):
         if self.stackedWidget.currentWidget().validate():
             QDialog.accept(self)
             
-    def getConnectionString(self):
-        return self.stackedWidget.currentWidget().getDatabaseString()
+    def getDatabaseParams(self):
+        return self.stackedWidget.currentWidget().getDatabaseParams()
 
+
+class TableGraphicsItem(QGraphicsItem):
+    
+    def __init__(self, table, parent=None):
+        QGraphicsItem.__init__(self, parent)
+        self.table = table
+        
+    def paint(self, painter, option, widget):        
+        painter.drawRect(self.pos().x(), self.pos().y(), 20, 20);
+        
+    def boundingRect(self):
+        return QRectF(self.pos(), QSizeF(20, 20))
+                      
 
 class MainWindow(QMainWindow, WithSettings):
+    
+    DATABASE_TYPES = {'PostgreSQL': PostgresInspector,
+                      'sqlite3': SqliteInspector}
     
     def __init__(self):
         QMainWindow.__init__(self)
         WithSettings.__init__(self, '', 'dbinspect')
         self.createMenus()
+        self.setCentralWidget(QGraphicsView())
         
     def createMenus(self):
         menu = self.menuBar().addMenu(self.tr('Connection'))
@@ -175,19 +196,27 @@ class MainWindow(QMainWindow, WithSettings):
         self.connect(action, SIGNAL('triggered()'), self.newConnection)
         menu.addAction(action)
         
+    def buildScene(self):
+        scene = QGraphicsScene()
+        for index, name in enumerate(self.inspector.get_tables()):
+            item = TableGraphicsItem(name)
+            item.setPos(index * 20, 20)
+            scene.addItem(item)
+        self.centralWidget().setScene(scene)
+                    
     def newConnection(self):
         dialog = QConnectionDialog()
         dialog.exec_()
-
+        database_type, params = dialog.getDatabaseParams()
+        Class = self.DATABASE_TYPES[database_type]
+        self.inspector = Class(params)
+        self.buildScene()
 
 def main():
     app = QApplication(argv)
-    # window = MainWindow()
-    # window.show()
-    dialog = QConnectionDialog()
-    dialog.show()
+    window = MainWindow()
+    window.show()
     app.exec_()
-    print dialog.getConnectionString()
 
 if __name__ == "__main__":
     main()
