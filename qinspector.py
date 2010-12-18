@@ -4,7 +4,7 @@ from sys import argv
 from os.path import join
 
 from PyQt4.QtCore import (SIGNAL, QSettings, QDir, Qt, QVariant, QPoint, QSize,
-                          QRectF, QSizeF)
+                          QRectF, QSizeF, QObject)
 from PyQt4.QtGui import (QWidget, QMainWindow, QApplication, QDialog, QAction, 
                          QRadioButton, QVBoxLayout, QHBoxLayout, QLineEdit,
                          QGridLayout, QLabel, QFileSystemModel, QTreeView,
@@ -12,6 +12,9 @@ from PyQt4.QtGui import (QWidget, QMainWindow, QApplication, QDialog, QAction,
                          QGraphicsView, QGraphicsScene, QGraphicsItem)
                          
 from pydbinspect import SqliteInspector, PostgresInspector
+
+COMPANY = ''
+PRODUCT = 'dbinspect'
 
 class WithSettings:
 
@@ -32,6 +35,31 @@ class WithSettings:
         settings = QSettings(self.__company, self.__product)
         settings.setValue("position", QVariant(self.pos()))
         settings.setValue("size", QVariant(self.size()))
+
+
+class QChoiceStore(QObject):
+    
+    def __init__(self, company, product, entry='choices', maxChoices=5, 
+                 parent=None):
+        QObject.__init__(self, parent)
+        self.company = company
+        self.product = product
+        self.entry = entry
+        self.maxChoices = maxChoices
+        
+    def addChoice(self, choice):
+        settings = QSettings(self.company, self.product)
+        choices = self.getChoices()
+        if choice not in choices:
+            choices = [choice] + choices
+        if len(choices) > self.maxChoices:
+            choices = choices[:self.maxChoices]
+        settings.setValue(self.entry, QVariant(choices))
+        
+    def getChoices(self):
+        settings = QSettings(self.company, self.product)        
+        choices = settings.value(self.entry, QVariant([])).toStringList()
+        return [unicode(string) for string in choices]
 
 
 class QConnectionDialog(QDialog):
@@ -92,7 +120,7 @@ class QConnectionDialog(QDialog):
             index = self.view.currentIndex()
             return bool(index.isValid()) and not self.model.isDir(index)
             
-        def getDatabaseString(self):
+        def getDatabaseParams(self):
             index = self.view.currentIndex()
             result = []
             while index.isValid():
@@ -185,7 +213,9 @@ class MainWindow(QMainWindow, WithSettings):
     
     def __init__(self):
         QMainWindow.__init__(self)
-        WithSettings.__init__(self, '', 'dbinspect')
+        WithSettings.__init__(self, COMPANY, PRODUCT)
+        self.connectionsStore = QChoiceStore(COMPANY, PRODUCT)
+
         self.createMenus()
         self.setCentralWidget(QGraphicsView())
         
@@ -195,6 +225,14 @@ class MainWindow(QMainWindow, WithSettings):
         action.setShortcut('Ctrl+N')
         self.connect(action, SIGNAL('triggered()'), self.newConnection)
         menu.addAction(action)
+        
+        for choice in self.connectionsStore.getChoices():
+            database_type, params = choice.split(',', 1)
+            action = QAction('%s: %s' % (database_type, params), self)
+            action.database_type = database_type
+            action.params = params
+            self.connect(action, SIGNAL('triggered()'), self.oldConnection)
+            menu.addAction(action)
         
     def buildScene(self):
         scene = QGraphicsScene()
@@ -206,12 +244,26 @@ class MainWindow(QMainWindow, WithSettings):
                     
     def newConnection(self):
         dialog = QConnectionDialog()
-        dialog.exec_()
-        database_type, params = dialog.getDatabaseParams()
+        if dialog.exec_() == QDialog.Accepted:
+            database_type, params = dialog.getDatabaseParams()
+            self.storeConnectionParams(database_type, params)
+            self.makeConnection(database_type, params)
+            self.buildScene()
+        
+    def oldConnection(self):
+        database_type = self.sender().database_type
+        params = self.sender().params
+        self.makeConnection(database_type, params)
+        self.buildScene()
+        
+    def makeConnection(self, database_type, params):
         Class = self.DATABASE_TYPES[database_type]
         self.inspector = Class(params)
-        self.buildScene()
-
+        
+    def storeConnectionParams(self, database_type, params):
+        assert ',' not in database_type, "',' is not allowed in database type"
+        self.connectionsStore.addChoice(database_type + ',' + params)
+        
 def main():
     app = QApplication(argv)
     window = MainWindow()
