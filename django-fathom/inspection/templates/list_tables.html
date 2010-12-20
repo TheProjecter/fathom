@@ -1,16 +1,17 @@
-{% extends "admin/base_site.html" %}
+{% extends 'inspection/base.html' %}
 
 {% load i18n %}
 
-{% block content %}
+{% block body %}
 <div id="content-main">
 
     <div class="module">
     <table summary="{% blocktrans %}Tables in database{% endblocktrans %}">
-    <caption>{% blocktrans %}Tables:{% endblocktrans %}</a></caption>
+    <caption>{% blocktrans %}Tables:{% endblocktrans %}</caption>
     {% for table in tables %}
         <tr>
             <th scope="row"><a href="">{{ table }}</a></th>
+            <td></td>
         </tr>
     {% endfor %}
     </table>

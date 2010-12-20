@@ -118,9 +118,13 @@ LOGGING = {
 }
 
 FATHOM = {
-    'DATABASE': {
+    'postgres_django': {
         'type': 'postgresql',
         'name': 'django',
         'user': 'django',
+    },
+    'sqlite_django': {
+        'type': 'sqlite3',
+        'name': 'fathom.db3'
     }
 }
