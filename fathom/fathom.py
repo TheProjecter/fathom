@@ -3,7 +3,7 @@
 from abc import ABCMeta, abstractmethod
 from re import compile as re_compile, search as re_search
 
-class InspectError(Exception):
+class FathomError(Exception):
     pass
 
 
@@ -27,6 +27,9 @@ class DatabaseInspector:
     @abstractmethod
     def get_stored_procedures(self):
         pass
+        
+    def supports_stored_procedures(self):
+        return True
         
     def build_scheme(self):
         database = Database()
@@ -58,8 +61,11 @@ class SqliteInspector(DatabaseInspector):
         import sqlite3
         self._api = sqlite3
 
+    def supports_stored_procedures(self):
+        return True
+
     def get_stored_procedures(self):
-        pass
+        return []
         
     def get_columns(self, table):
         sql = self._COLUMN_NAMES_SQL % table
@@ -71,7 +77,7 @@ class SqliteInspector(DatabaseInspector):
         start = sql.find('(')
         end = sql.rfind(')')
         if start == -1 or end == -1:
-            raise InspectError("Failed to parse table sql.")
+            raise FathomError("Failed to parse table sql.")
         columns = [col.strip() for col in sql[start + 1:end].split(',')]
         columns = [column.split(' ')[0] for column in columns]
         print columns
