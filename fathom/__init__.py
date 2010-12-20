@@ -50,7 +50,8 @@ class DatabaseInspector:
 class SqliteInspector(DatabaseInspector):
     
     _TABLE_NAMES_SQL = """SELECT name 
-                          FROM sqlite_master"""
+                          FROM sqlite_master
+                          WHERE type = 'table'"""
     
     _COLUMN_NAMES_SQL = """SELECT sql
                            FROM sqlite_master
