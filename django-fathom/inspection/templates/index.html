@@ -8,17 +8,23 @@
 
         <div class="caption">{% blocktrans %}Database:{% endblocktrans %} {{ label }}</div>
         
-        <div class="tables"><a href="/inspection/tables/">{% blocktrans %}Tables{% endblocktrans %}</a></div>
+        <div class="tables">
+            <a href="/inspection/{{ label }}/tables/">
+                {% blocktrans %}Tables{% endblocktrans %}
+            </a>
+        </div>
         
         {% if inspector.supports_stored_procedures %}
         <div class="stored-procedures">
-            <a href="/inspection/stored-procedures/">
+            <a href="/inspection/{{ label }}/stored-procedures/">
                 {% blocktrans %}Stored procedures {% endblocktrans %}
             </a>
         </div>
         {% endif %}
         
-        <div class="views"><a href="/inspection/views/">{% blocktrans %}Views{% endblocktrans %}</a></div>
+        <div class="views"><a href="/inspection/{{ label }}/views/">
+            {% blocktrans %}Views{% endblocktrans %}
+        </a></div>
     
     {% endfor %}
 
