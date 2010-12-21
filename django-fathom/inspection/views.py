@@ -31,3 +31,10 @@ def list_tables(request, label, **kwargs):
 def database(request, inspector, template, **kwargs):
     dictionary = {'inspector': inspector, 'database': inspector.build_scheme()}
     return render_to_response(template, dictionary)
+
+@inspection_view('table.html')
+def table(request, inspector, template, **kwargs):
+    table_name = kwargs.get('table')
+    columns = inspector.get_columns(table_name)
+    dictionary = {'columns': columns, 'table_name': table_name}
+    return render_to_response(template, dictionary)

@@ -1,11 +1,22 @@
 {% extends 'base.html' %}
 
-{% block head %}
+{% block script %}
+    {{ block.super }}
+    
     <script type="text/javascript">
         $(document).ready(function() {
             $('#database').accordion();
         })
+        
+        $(document).ready(function() {
+            $('div.left div.table').click(function(){
+                $.post('table/' + $(this).text() + '/', function(result){
+                    $('.right').html(result);
+                })
+            })
+        })
     </script>
+    
 {% endblock %}
 
 {% block body %}
@@ -15,7 +26,7 @@
             <h3>Tables</h3>
             <div>
                 {% for name, table in database.tables.items %}
-                    <div>{{ table.name }}</div>
+                    <div class="table">{{ table.name }}</div>
                 {% endfor %}
             </div>
             <h3>Views</h3>
@@ -31,6 +42,10 @@
                 A tu indeksiki!
             </div>
         </div>
+    </div>
+    
+    <div class="right">
+        
     </div>
 
 {% endblock %}
