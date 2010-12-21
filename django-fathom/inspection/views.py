@@ -29,4 +29,5 @@ def list_tables(request, label, **kwargs):
 
 @inspection_view('database.html')
 def database(request, inspector, template, **kwargs):
-    return render_to_response(template, {'database': inspector.build_scheme()})
+    dictionary = {'inspector': inspector, 'database': inspector.build_scheme()}
+    return render_to_response(template, dictionary)
