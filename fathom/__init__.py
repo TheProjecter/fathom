@@ -82,7 +82,7 @@ class SqliteInspector(DatabaseInspector):
             raise FathomError("Failed to parse table sql.")
         columns = [col.strip() for col in sql[start + 1:end].split(',')]
         columns = [column.split(' ')[0] for column in columns]
-        print columns
+        return columns
 
 
 class PostgresInspector(DatabaseInspector):
