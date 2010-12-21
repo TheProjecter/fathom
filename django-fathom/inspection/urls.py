@@ -1,8 +1,9 @@
 from django.conf.urls.defaults import *
 
-from views import (index, list_tables)
+from views import (index, list_tables, database)
 
 urlpatterns = patterns('',
     url(r'^$', index),
     url(r'^(?P<label>\w+)/tables/', list_tables),
+    url(r'^(?P<label>\w+)/', database),
 )

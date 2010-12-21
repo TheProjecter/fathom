@@ -4,16 +4,23 @@
     <head>
         <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
         <title>{%block title %}{% endblock %}</title>
+        
+        <!-- jquery links -->
         <script type="text/javascript" src="/static/js/jquery.js"></script>
         <script type="text/javascript" src="/static/js/jquery-ui.js"></script>
         <link rel="stylesheet" type="text/css" href="/static/css/jquery-ui/jquery-ui.css">
+        
+        <link rel="stylesheet" type="text/css" href="/static/css/inspection.css">
         {% block head %}
         {% endblock %}
     </head>
 
     <body>
-    {% block body %}
-    {% endblock %}
+        <div class="header">
+            django-fathom: web database inspection
+        </div>
+        {% block body %}
+        {% endblock %}
     </body>
 
 </html>
