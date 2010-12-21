@@ -37,6 +37,7 @@ class DatabaseInspector:
             table = database.add_table(table_name)
             for column_name in self.get_columns(table_name):
                 column = table.add_column(column_name)
+        return database
     
     def _select(self, sql):
         connection = self._api.connect(*self._db_params)
