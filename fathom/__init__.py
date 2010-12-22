@@ -66,7 +66,7 @@ class SqliteInspector(DatabaseInspector):
         self._api = sqlite3
 
     def supports_stored_procedures(self):
-        return True
+        return False
 
     def get_stored_procedures(self):
         return []
