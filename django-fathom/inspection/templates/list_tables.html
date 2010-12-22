@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% load i18n %}
+
+{% block body %}
+<div id="content-main">
+
+    <div class="module">
+    <table summary="{% blocktrans %}Tables in database{% endblocktrans %}">
+    <caption>{% blocktrans %}Tables:{% endblocktrans %}</caption>
+    {% for table in tables %}
+        <tr>
+            <th scope="row"><a href="">{{ table }}</a></th>
+            <td></td>
+        </tr>
+    {% endfor %}
+    </table>
+    </div>
+        
+</div>
+{% endblock %}
