@@ -1,10 +1,13 @@
+{% load i18n %}
+
 <div class="table">
     <div class="name">
+        <span class="label">{% blocktrans %}Name: {% endblocktrans %}</span>
         {{ table_name }}
     </div>
-    <table>
+    <table class="table-details">
         <tr>
-            <th>Column</th>
+            <th>{% blocktrans %}Column{% endblocktrans %}</th>
         </tr>
         {% for column in columns %}
         <tr>
@@ -12,4 +15,16 @@
         </tr>
         {% endfor %}
     </table>
+
+    <table class="table-details">
+        <tr>
+            <th>{% blocktrans %}Constraints{% endblocktrans %}</th>
+        </tr>
+        <tr>
+            <td>
+                Foreign Key content_type (id)
+            </td>
+        </tr>
+    </table>
+
 </div>
