@@ -78,13 +78,12 @@ class SqliteInspector(DatabaseInspector):
         return self._parse_table_sql(table_sql)
         
     def _parse_table_sql(self, sql):
-        start = sql.find('(')
-        end = sql.rfind(')')
-        if start == -1 or end == -1:
-            raise FathomError("Failed to parse table sql.")
-        columns = [col.strip() for col in sql[start + 1:end].split(',')]
-        columns = [column.split(' ')[0] for column in columns]
-        return columns
+        def strip(column):
+            if column[0] == column[-1] == '"':
+                return column[1:-1]
+            else:
+                return column
+        return [strip(column) for column in CreateTableParser().parse(sql)]
 
 
 class PostgresInspector(DatabaseInspector):
