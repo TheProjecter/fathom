@@ -1,0 +1,15 @@
+<div class="table">
+    <div class="name">
+        {{ table_name }}
+    </div>
+    <table>
+        <tr>
+            <th>Column</th>
+        </tr>
+        {% for column in columns %}
+        <tr>
+            <td>{{ column }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
