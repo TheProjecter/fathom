@@ -3,6 +3,8 @@
 from abc import ABCMeta, abstractmethod
 from re import compile as re_compile, search as re_search
 
+from _sqlite import CreateTableParser
+
 class FathomError(Exception):
     pass
 
