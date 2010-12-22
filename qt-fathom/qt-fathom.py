@@ -11,7 +11,7 @@ from PyQt4.QtGui import (QWidget, QMainWindow, QApplication, QDialog, QAction,
                          QStackedWidget, QSizePolicy, QPushButton, 
                          QGraphicsView, QGraphicsScene, QGraphicsItem)
                          
-from pydbinspect import SqliteInspector, PostgresInspector
+from fathom import SqliteInspector, PostgresInspector
 
 COMPANY = ''
 PRODUCT = 'dbinspect'
