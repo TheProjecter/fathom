@@ -7,11 +7,25 @@ from pyparsing import (Literal, CaselessLiteral, Word, Upcase, delimitedList,
 
 class CreateTableParser(object):
     
-    create_stmt = Forward()
-    create_token = Keyword("create", caseless=True)
-    table_token = Keyword("table", caseless=True)
     
-    ident = Word(alphas, alphanums)
+    create_token = Keyword("create", caseless=True)
+    table_token = Keyword("table", caseless=True)    
+    table_name = Word(alphas, alphanums).setResultsName('table')
+    columns = Word(alphas, alphanums).setResultsName('columns')
+    
+    create_stmt = Forward()
+    create_stmt << (create_token + table_token + table_name + '(' + columns + 
+                    ')' )
     
     def __init__(self):
         super(CreateTableParser, self).__init__()
+
+    def parse(self, sql):
+        try:
+            tokens = self.create_stmt.parseString(sql)
+            print 'tokens=', tokens.table
+        except ParseException as error:
+            print error
+            
+if __name__ == "__main__":
+    CreateTableParser().parse('create table dupa (x int)')
