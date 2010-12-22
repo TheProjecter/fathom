@@ -19,25 +19,27 @@
     
 {% endblock %}
 
-{% block body %}
+{% block content %}
 
     <div class="left">
         <div id="database">
-            <h3>Tables</h3>
+            <h3><a href="#">Tables</a></h3>
             <div>
                 {% for name, table in database.tables.items %}
                     <div class="table">{{ table.name }}</div>
                 {% endfor %}
             </div>
-            <h3>Views</h3>
+            <h3><a href="#">Views</a></h3>
             <div>
                 Tu będą widoczki!
             </div>
-            <h3>Stored procedures</h3>
+            {% if inspector.supports_stored_procedures %}
+            <h3><a href="#">Stored procedures</a></h3>
             <div>
                 A tu będą procedurki!
             </div>
-            <h3>Indices</h3>
+            {% endif %}
+            <h3><a href="#">Indices</a></h3>
             <div>
                 A tu indeksiki!
             </div>
