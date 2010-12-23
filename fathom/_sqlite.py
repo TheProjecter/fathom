@@ -17,7 +17,10 @@ class CreateTableParser(object):
     NOT = Keyword('NOT', caseless=True)
     EXISTS = Keyword('EXISTS', caseless=True)
     AS = Keyword('AS', caseless=True)
-    keywords_set = (CREATE | TEMP | TEMPORARY | TABLE | IF | NOT | EXISTS | AS)
+    PRIMARY = Keyword('PRIMARY', caseless=True)
+    KEY = Keyword('KEY', caseless=True)
+    keywords_set = (CREATE | TEMP | TEMPORARY | TABLE | IF | NOT | EXISTS |
+                    AS | PRIMARY | KEY)
     
     # different types of identifier objects
     identifier = (Combine(Optional('"') + Word(alphanums) + 
@@ -31,7 +34,8 @@ class CreateTableParser(object):
     create_table_stmt = Forward()
     select_stmt = Forward()
     column_def = Forward()
-    type_name = Forward()
+    type_name = Forward().setResultsName('types', listAllMatches=True)
+    column_constraint = Forward()
 
     # special statements for multiple occurance of certain statement
     multi_column_def = Forward()
@@ -44,7 +48,7 @@ class CreateTableParser(object):
     table_name = identifier.setResultsName('table_name', listAllMatches=True)
     column_name = identifier.setResultsName('column_names', 
                                             listAllMatches=True)
-    
+                                                
     # building statement as described in sqlite 'CREATE TABLE' reference        
     create_table_stmt << (CREATE + Optional(TEMP | TEMPORARY) + TABLE + 
                           Optional(IF + NOT + EXISTS) + 
@@ -55,33 +59,41 @@ class CreateTableParser(object):
                            StringEnd())
     multi_column_def << ((OneOrMore(column_def + ',') + column_def) |
                          Optional(column_def))
-                                   
-    column_def << column_name + Optional(type_name)
-        
+    column_def << column_name + Optional(type_name) + multi_column_constraint
+    type_name << (identifier_white.copy() + 
+                  Optional('(' + Word(nums) + 
+                           (')' | (',' + Word(nums) + ')'))))
+    multi_column_constraint << ZeroOrMore(column_constraint)
+    # column_constraint << 
+            
     def __init__(self):
         super(CreateTableParser, self).__init__()
 
     def parse(self, sql):
-        try:
-            tokens = self.create_table_stmt.parseString(sql)
-            print tokens.database_name, tokens.table_name, tokens.column_names
-            return tokens.column_names
-        except ParseException as error:
-            print error
+        tokens = self.create_table_stmt.parseString(sql)
+        vals = (tokens.database_name, tokens.table_name, tokens.column_names, 
+                tokens.types)
+        print vals
+        return vals
             
 if __name__ == "__main__":
     CreateTableParser().parse('''
-CREATE TABLE "django"."django_site" (
+CREATE TABLE "django"."django_site2" (
 )''')
     CreateTableParser().parse('''
-CREATE TABLE "django"."django_site" (
-)''')
-    CreateTableParser().parse('''
-CREATE TABLE "django"."django_site" (
+CREATE TABLE "django"."django_site3" (
 x
 )''')
     CreateTableParser().parse('''
-CREATE TABLE "django"."django_site" (
+CREATE TABLE "django"."django_site4" (
+x int
+)''')
+    CreateTableParser().parse('''
+CREATE TABLE "django"."django_site5" (
+x varchar(100, 200)
+)''')
+    CreateTableParser().parse('''
+CREATE TABLE "django"."django_site6" (
 x, y,
 z,
 tytww_wer,
@@ -89,8 +101,16 @@ rew
 )''')
 
     CreateTableParser().parse('''
-CREATE TABLE "django_site" (
-"id" integer NOT NULL PRIMARY   KEY,
+CREATE TABLE "django_site7" (
+"id" integer,
+"domain" varchar(2000),
+"name" varchar(100, 500),
+"user_id" integer
+)''')
+
+    CreateTableParser().parse('''
+CREATE TABLE "django_site8" (
+"id" integer NOT NULL PRIMARY KEY,
 "domain" varchar,
 "name" varchar,
 "user_id" integer NOT NULL REFERENCES "auth_user" ("id")
