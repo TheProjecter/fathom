@@ -13,7 +13,20 @@ class SqliteCreateTableParseTestCase(TestCase):
         sql = '''
 CREATE TABLE "table" (
 )'''
-        self.assertEqual(self.parser.parse(sql), ('', 'table', [], []))
+        self.assertEqual(self.parser.parse(sql), {'database_name': '', 
+                                                  'table_name': ['"table"'], 
+                                                  'column_names': '', 
+                                                  'column_types': ''})
+                                                  
+    def test_empty_table_with_database(self):
+        sql = '''
+CREATE TABLE "database"."table" (
+)'''
+        self.assertEqual(self.parser.parse(sql), {'database_name': ['"database"'], 
+                                                  'table_name': ['"table"'], 
+                                                  'column_names': '', 
+                                                  'column_types': ''})
+                                            
         
 if __name__ == "__main__":
     main()
