@@ -4,7 +4,7 @@ from pyparsing import (Literal, CaselessLiteral, Word, Upcase, delimitedList,
                        Optional, Combine, Group, alphas, nums, alphanums, 
                        ParseException, Forward, oneOf, quotedString, 
                        ZeroOrMore, restOfLine, Keyword, White, Suppress,
-                       OneOrMore, StringEnd)
+                       OneOrMore, StringEnd, ParseResults)
 
 class CreateTableParser(object):
 
@@ -19,7 +19,7 @@ class CreateTableParser(object):
     AS = Keyword('AS', caseless=True)
     PRIMARY = Keyword('PRIMARY', caseless=True)
     KEY = Keyword('KEY', caseless=True)
-    keywords_set = (CREATE | TEMP | TEMPORARY | TABLE | IF | NOT | EXISTS |
+    keywords_set = (CREATE | TEMP | TEMPORARY | TABLE | IF | NOT | EXISTS | 
                     AS | PRIMARY | KEY)
     
     # different types of identifier objects
@@ -43,9 +43,8 @@ class CreateTableParser(object):
     multi_column_constraint = Forward()
 
     # identifiers
-    database_name = identifier.setResultsName('database_name', 
-                                              listAllMatches=True)
-    table_name = identifier.setResultsName('table_name', listAllMatches=True)
+    database_name = identifier.setResultsName('database_name')
+    table_name = identifier.setResultsName('table_name')
     column_name = identifier.setResultsName('column_names', 
                                             listAllMatches=True)
                                                 
@@ -64,19 +63,27 @@ class CreateTableParser(object):
                   Optional('(' + Word(nums) + 
                            (')' | (',' + Word(nums) + ')'))))
     multi_column_constraint << ZeroOrMore(column_constraint)
-    # column_constraint << 
+    #column_constraint << 
             
     def __init__(self):
         super(CreateTableParser, self).__init__()
 
     def parse(self, sql):
         tokens = self.create_table_stmt.parseString(sql)
-        vals = (tokens.database_name, tokens.table_name, tokens.column_names, 
-                tokens.types)
-        print vals
-        return vals
+        result = {}
+        for name in ('database_name', 'table_name', 'column_names', 
+                     'column_types'):
+            values = getattr(tokens, name)
+            if isinstance(values, ParseResults):
+                result[name] = values.asList()
+            else:
+                result[name] = values
+        return result
             
 if __name__ == "__main__":
+    CreateTableParser().parse('''
+CREATE TABLE "django"."django_site1" (
+)''')
     CreateTableParser().parse('''
 CREATE TABLE "django"."django_site2" (
 )''')
