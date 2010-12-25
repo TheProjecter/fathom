@@ -74,6 +74,36 @@ CREATE TABLE "database"."table" (
                                    ['varchar', '(', '100', ',', '500', ')'],
                                    ['integer']]}
         self.assertEqual(self.parser.parse(sql), result)
+    
+    def test_typend_and_untyped_columns(self):
+        sql = '''CREATE TABLE "table" (
+                    table_id,
+                    table_name varchar(1024)
+                )'''
+        result = {'database_name': '', 'table_name': ['"table"'],
+                  'column_names': [['table_id'], ['table_name']],
+                  'column_types': [['varchar', '(', '1024', ')']]}
+        self.assertEqual(self.parser.parse(sql), result)
+        
+    #def test_django_admin_log(self):
+        #sql = '''CREATE TABLE "django_admin_log" (
+                    #"id" integer NOT NULL PRIMARY KEY,
+                    #"action_time" datetime NOT NULL,
+                    #"user_id" integer NOT NULL REFERENCES "auth_user" ("id"),
+                    #"content_type_id" integer 
+                        #REFERENCES "django_content_type" ("id"),
+                    #"object_id" text,
+                    #"object_repr" varchar(200) NOT NULL,
+                    #"action_flag" smallint unsigned NOT NULL,
+                    #"change_message" text NOT NULL
+                #)'''
+        #result = self.parser.parse(sql)
+        #self.assertEqual(result.database_name, '')
+        #self.assertEqual(result.table_name, 'django_admin_log')
+        #columns = [('id', 'integer', 'NOT NULL PRIMARY KEY'),
+                   #('action_time', 'datetime', 'NOT NULL'),
+                   #('user_id', 'integer'
+
         
 if __name__ == "__main__":
     main()
