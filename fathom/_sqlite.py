@@ -82,34 +82,6 @@ class CreateTableParser(object):
             
 if __name__ == "__main__":
     CreateTableParser().parse('''
-CREATE TABLE "django"."django_site3" (
-x
-)''')
-    CreateTableParser().parse('''
-CREATE TABLE "django"."django_site4" (
-x int
-)''')
-    CreateTableParser().parse('''
-CREATE TABLE "django"."django_site5" (
-x varchar(100, 200)
-)''')
-    CreateTableParser().parse('''
-CREATE TABLE "django"."django_site6" (
-x, y,
-z,
-tytww_wer,
-rew
-)''')
-
-    CreateTableParser().parse('''
-CREATE TABLE "django_site7" (
-"id" integer,
-"domain" varchar(2000),
-"name" varchar(100, 500),
-"user_id" integer
-)''')
-
-    CreateTableParser().parse('''
 CREATE TABLE "django_site8" (
 "id" integer NOT NULL PRIMARY KEY,
 "domain" varchar,
