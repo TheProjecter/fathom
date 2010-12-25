@@ -31,7 +31,9 @@
             </div>
             <h3><a href="#">Views</a></h3>
             <div>
-                Tu będą widoczki!
+                {% for name, view in database.views.items %}
+                    <div class="view">{{ view.name }}</div>
+                {% endfor %}
             </div>
             {% if inspector.supports_stored_procedures %}
             <h3><a href="#">Stored procedures</a></h3>
