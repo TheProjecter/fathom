@@ -33,7 +33,7 @@ class CreateTableParser(object):
     # statements used in sqlite 'CREATE TABLE' reference
     create_table_stmt = Forward()
     select_stmt = Forward()
-    column_def = Forward()
+    column_def = Forward().setResultsName('columns', listAllMatches=True)
     type_name = Forward().setResultsName('column_types', listAllMatches=True)
     column_constraint = Forward()
 
@@ -83,10 +83,6 @@ class CreateTableParser(object):
 if __name__ == "__main__":
     CreateTableParser().parse('''
 CREATE TABLE "django_site8" (
-"id" integer NOT NULL PRIMARY KEY,
-"domain" varchar,
-"name" varchar,
-"user_id" integer NOT NULL REFERENCES "auth_user" ("id")
-UNIQUE ("app_label", "model")
+    id,
+    name text
 )''')
-
