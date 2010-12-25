@@ -26,6 +26,9 @@ class DatabaseInspector:
     def get_columns(self, table):
         pass
         
+    def _get_views(self):
+        return [row[0] for row in self._select(self._VIEW_NAMES_SQL)]
+        
     @abstractmethod
     def get_stored_procedures(self):
         pass
@@ -39,6 +42,8 @@ class DatabaseInspector:
             table = database.add_table(table_name)
             for column_name in self.get_columns(table_name):
                 column = table.add_column(column_name)
+        for view_name in self._get_views():
+            view = database.add_view(view_name)
         return database
     
     def _select(self, sql):
@@ -55,6 +60,10 @@ class SqliteInspector(DatabaseInspector):
     _TABLE_NAMES_SQL = """SELECT name 
                           FROM sqlite_master
                           WHERE type = 'table'"""
+                          
+    _VIEW_NAMES_SQL = """SELECT name
+                          FROM sqlite_master
+                          WHERE type= 'view'"""
     
     _COLUMN_NAMES_SQL = """SELECT sql
                            FROM sqlite_master
@@ -91,6 +100,11 @@ class PostgresInspector(DatabaseInspector):
     _TABLE_NAMES_SQL = """SELECT table_name 
                           FROM information_schema.tables 
                           WHERE table_schema = 'public'"""
+                          
+    _VIEW_NAMES_SQL = """SELECT viewname
+                         FROM pg_views
+                         WHERE schemaname = 'public'"""
+                          
     _COLUMN_NAMES_SQL = """SELECT column_name 
                            FROM information_schema.columns
                            WHERE table_name = '%s'"""
@@ -116,11 +130,16 @@ class Database(object):
         super(Database, self).__init__()
         self.name = name
         self.tables = dict()
+        self.views = dict()
         self.stored_procedures = dict()
         
     def add_table(self, name):
         self.tables[name] = Table(name)
         return self.tables[name]
+        
+    def add_view(self, name):
+        self.views[name] = View(name)
+        return self.views[name]
         
     def add_stored_procedure(self, name):
         self.stored_procedures[name] = StoredProcedure(name)
@@ -137,6 +156,13 @@ class Table(object):
     def add_column(self, name):
         self.columns[name] = Column(name)
         return self.columns[name]
+        
+
+class View(object):
+    
+    def __init__(self, name):
+        super(View, self).__init__()
+        self.name = name
         
 
 class StoredProcedure(object):
