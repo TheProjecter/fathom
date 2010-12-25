@@ -34,7 +34,7 @@ class CreateTableParser(object):
     create_table_stmt = Forward()
     select_stmt = Forward()
     column_def = Forward()
-    type_name = Forward().setResultsName('types', listAllMatches=True)
+    type_name = Forward().setResultsName('column_types', listAllMatches=True)
     column_constraint = Forward()
 
     # special statements for multiple occurance of certain statement
@@ -81,12 +81,6 @@ class CreateTableParser(object):
         return result
             
 if __name__ == "__main__":
-    CreateTableParser().parse('''
-CREATE TABLE "django"."django_site1" (
-)''')
-    CreateTableParser().parse('''
-CREATE TABLE "django"."django_site2" (
-)''')
     CreateTableParser().parse('''
 CREATE TABLE "django"."django_site3" (
 x

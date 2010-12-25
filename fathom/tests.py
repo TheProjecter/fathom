@@ -27,6 +27,36 @@ CREATE TABLE "database"."table" (
                                                   'column_names': '', 
                                                   'column_types': ''})
                                             
+    def test_no_type_column(self):
+        sql = '''
+CREATE TABLE "database".one_column_table (
+        column
+)'''
+        self.assertEqual(self.parser.parse(sql), {'database_name': ['"database"'], 
+                                                  'table_name': ['one_column_table'], 
+                                                  'column_names': [['column']], 
+                                                  'column_types': ''})
+                                                  
+    def test_typed_column(self):
+        sql = '''
+CREATE TABLE "database".one_column_table (
+        column integer
+)'''
+        self.assertEqual(self.parser.parse(sql), {'database_name': ['"database"'], 
+                                                  'table_name': ['one_column_table'], 
+                                                  'column_names': [['column']], 
+                                                  'column_types': [['integer']]})
+        sql = '''
+CREATE TABLE "database".one_column_table (
+        column varchar(800)
+)'''
+        self.assertEqual(self.parser.parse(sql), 
+                         {'database_name': ['"database"'], 
+                          'table_name': ['one_column_table'], 
+                          'column_names': [['column']], 
+                          'column_types': [['varchar', '(', '800', ')']]})
+        
+        
         
 if __name__ == "__main__":
     main()
