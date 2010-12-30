@@ -16,7 +16,8 @@ class DatabaseInspector:
     def __init__(self, *db_params):
         self._db_params = db_params
         
-    def get_tables(self):
+    def _get_tables(self):
+        '''Return names of all tables in the database.'''
         return [row[0] for row in self._select(self._TABLE_NAMES_SQL)]
         
     @abstractmethod
@@ -24,9 +25,11 @@ class DatabaseInspector:
         pass
         
     def _get_views(self):
+        '''Return names of all views in the database.'''
         return [row[0] for row in self._select(self._VIEW_NAMES_SQL)]
         
     def _get_indices(self):
+        '''Return names of all indices in the database.'''
         return [row[0] for row in self._select(self._INDEX_NAMES_SQL)]
         
     @abstractmethod
@@ -38,7 +41,7 @@ class DatabaseInspector:
         
     def build_scheme(self):
         database = Database()
-        for table_name in self.get_tables():
+        for table_name in self._get_tables():
             table = database.add_table(table_name)
             for column_name in self.get_columns(table_name):
                 column = table.add_column(column_name)
@@ -101,7 +104,8 @@ class PostgresInspector(DatabaseInspector):
     
     _TABLE_NAMES_SQL = """SELECT table_name 
                           FROM information_schema.tables 
-                          WHERE table_schema = 'public'"""
+                          WHERE table_schema = 'public' AND 
+                                table_type = 'BASE TABLE'"""
                           
     _VIEW_NAMES_SQL = """SELECT viewname
                          FROM pg_views
