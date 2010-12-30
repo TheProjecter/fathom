@@ -29,6 +29,9 @@ class DatabaseInspector:
     def _get_views(self):
         return [row[0] for row in self._select(self._VIEW_NAMES_SQL)]
         
+    def _get_indices(self):
+        return [row[0] for row in self._select(self._INDEX_NAMES_SQL)]
+        
     @abstractmethod
     def get_stored_procedures(self):
         pass
@@ -44,6 +47,8 @@ class DatabaseInspector:
                 column = table.add_column(column_name)
         for view_name in self._get_views():
             view = database.add_view(view_name)
+        for index_name in self._get_indices():
+            index = database.add_index(index_name)
         return database
     
     def _select(self, sql):
@@ -108,6 +113,10 @@ class PostgresInspector(DatabaseInspector):
     _COLUMN_NAMES_SQL = """SELECT column_name 
                            FROM information_schema.columns
                            WHERE table_name = '%s'"""
+                           
+    _INDEX_NAMES_SQL = """SELECT indexname
+                          FROM pg_indexes
+                          WHERE schemaname = 'public'"""
     
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -131,6 +140,7 @@ class Database(object):
         self.name = name
         self.tables = dict()
         self.views = dict()
+        self.indices = dict()
         self.stored_procedures = dict()
         
     def add_table(self, name):
@@ -140,6 +150,10 @@ class Database(object):
     def add_view(self, name):
         self.views[name] = View(name)
         return self.views[name]
+    
+    def add_index(self, name):
+        self.indices[name] = Index(name)
+        return self.indices[name]
         
     def add_stored_procedure(self, name):
         self.stored_procedures[name] = StoredProcedure(name)
@@ -162,6 +176,13 @@ class View(object):
     
     def __init__(self, name):
         super(View, self).__init__()
+        self.name = name
+
+
+class Index(object):
+    
+    def __init__(self, name):
+        super(Index, self).__init__()
         self.name = name
         
 
