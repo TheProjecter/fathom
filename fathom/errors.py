@@ -1,0 +1,3 @@
+class FathomError(Exception):
+    pass
+
