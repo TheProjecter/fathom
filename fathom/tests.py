@@ -16,6 +16,10 @@ class PostgresTest(TestCase):
                       'auth_message', 'auth_user', 'auth_permission',
                       'django_content_type', 'django_session', 'django_site'))
         self.assertEqual(set(self.inspector._get_tables()), tables)
-
+        
+    def test_view_names(self):
+        views = set(('au',))
+        self.assertEqual(set(self.inspector._get_views()), views)
+        
 if __name__ == "__main__":
     main()
