@@ -65,24 +65,13 @@ class CreateTableParser(object):
     multi_column_constraint << ZeroOrMore(column_constraint)
     #column_constraint << 
             
-    def __init__(self):
+    def __init__(self, sql):
         super(CreateTableParser, self).__init__()
+        self.tokens = self.create_table_stmt.parseString(sql)
 
-    def parse(self, sql):
-        tokens = self.create_table_stmt.parseString(sql)
-        result = {}
-        for name in ('database_name', 'table_name', 'column_names', 
-                     'column_types'):
-            values = getattr(tokens, name)
-            if isinstance(values, ParseResults):
-                result[name] = values.asList()
-            else:
-                result[name] = values
-        return result
-            
-if __name__ == "__main__":
-    CreateTableParser().parse('''
-CREATE TABLE "django_site8" (
-    id,
-    name text
-)''')
+    def get_values(self, name):
+        values = getattr(self.tokens, name)
+        if isinstance(values, ParseResults):
+            return values.asList()
+        else:
+            return values
