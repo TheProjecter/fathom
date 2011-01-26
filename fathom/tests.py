@@ -1,7 +1,10 @@
 #!/usr/bin/python
 
 from abc import ABCMeta, abstractmethod
-from unittest import TestCase, main
+try:
+    from unittest import TestCase, main, skipUnless
+except ImportError:
+    from unittest2 import TestCase, main, skipUnless
 
 from inspectors import PostgresInspector, SqliteInspector
 
@@ -9,16 +12,15 @@ try:
     import psycopg2
     TEST_POSTGRES = True
 except ImportError:
-    print('Failed to import psycopg2; skipping postgres tests.')
+    # print('Failed to import psycopg2; skipping postgres tests.')
     TEST_POSTGRES = False
     
 try:
     import sqlite3
     TEST_SQLITE = True
 except:
-    print('Failed to import sqlite3; skipping sqlite tests.')
+    # print('Failed to import sqlite3; skipping sqlite tests.')
     TEST_SQLITE = False
-TEST_SQLITE = True # for time being
 
 class AbstractDatabaseTestCase:
     
@@ -77,38 +79,40 @@ class AbstractDatabaseTestCase:
         cursor.close()
         conn.close()
 
-if TEST_POSTGRES: # turn to skip, when python 2.7 is more popular
-    class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
-        
-        DBNAME = 'fathom'
-        USER = 'fathom'
-        
-        TABLES = AbstractDatabaseTestCase.TABLES.copy()
-        TABLES['empty'] = '''CREATE TABLE empty()'''
+
+@skipUnless(TEST_POSTGRES, 'Failed to import psycopg2 module.')
+class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
     
-        def __init__(self, *args, **kwargs):
-            TestCase.__init__(self, *args, **kwargs)
-            args = self.DBNAME, self.USER
-            self.inspector = PostgresInspector('dbname=%s user=%s' % args)
-            self.DatabaseErrors = (psycopg2.ProgrammingError,
-                                   psycopg2.OperationalError)
-            
-        def _get_connection(self):
-            args = self.DBNAME, self.USER
-            return psycopg2.connect('dbname=%s user=%s' % args)
-
-
-if TEST_SQLITE: # turn to skip, when python 2.7 is more popular
-    class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
-        
-        def __init__(self, *args, **kwargs):
-            TestCase.__init__(self, *args, **kwargs)
-            self.inspector = SqliteInspector('fathom.db3')
-            self.DatabaseErrors = (sqlite3.OperationalError, 
-                                   sqlite3.ProgrammingError)
-
-        def _get_connection(self):
-            return sqlite3.connect('fathom.db3')
+    DBNAME = 'fathom'
+    USER = 'fathom'
     
+    TABLES = AbstractDatabaseTestCase.TABLES.copy()
+    TABLES['empty'] = '''CREATE TABLE empty()'''
+
+    def __init__(self, *args, **kwargs):
+        TestCase.__init__(self, *args, **kwargs)
+        args = self.DBNAME, self.USER
+        self.inspector = PostgresInspector('dbname=%s user=%s' % args)
+        self.DatabaseErrors = (psycopg2.ProgrammingError,
+                               psycopg2.OperationalError)
+        
+    def _get_connection(self):
+        args = self.DBNAME, self.USER
+        return psycopg2.connect('dbname=%s user=%s' % args)
+
+
+@skipUnless(TEST_SQLITE, 'Failed to import sqlite3 module.')
+class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
+    
+    def __init__(self, *args, **kwargs):
+        TestCase.__init__(self, *args, **kwargs)
+        self.inspector = SqliteInspector('fathom.db3')
+        self.DatabaseErrors = (sqlite3.OperationalError, 
+                               sqlite3.ProgrammingError)
+
+    def _get_connection(self):
+        return sqlite3.connect('fathom.db3')
+
+
 if __name__ == "__main__":
     main()
