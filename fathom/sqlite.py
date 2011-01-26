@@ -45,7 +45,7 @@ class CreateTableParser(object):
     # identifiers
     database_name = identifier.setResultsName('database_name')
     table_name = identifier.setResultsName('table_name')
-    column_name = identifier.setResultsName('column_names', 
+    column_name = identifier.setResultsName('column_name', 
                                             listAllMatches=True)
                                                 
     # building statement as described in sqlite 'CREATE TABLE' reference        
@@ -69,9 +69,13 @@ class CreateTableParser(object):
         super(CreateTableParser, self).__init__()
         self.tokens = self.create_table_stmt.parseString(sql)
 
-    def get_values(self, name):
-        values = getattr(self.tokens, name)
-        if isinstance(values, ParseResults):
-            return values.asList()
-        else:
-            return values
+    def column_names(self):
+        result = []
+        for column in self.tokens.columns:
+            result.append(clear_identifier(column[0]))
+        return result
+
+def clear_identifier(identifier):
+    if identifier[0] == '"' and identifier[-1] == '"':
+        identifier = identifier[1:-1]
+    return identifier
