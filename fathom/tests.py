@@ -5,6 +5,7 @@ try:
     from unittest import TestCase, main, skipUnless
 except ImportError:
     from unittest2 import TestCase, main, skipUnless
+from collections import namedtuple
 
 from inspectors import PostgresInspector, SqliteInspector
 
@@ -22,14 +23,19 @@ except:
     # print('Failed to import sqlite3; skipping sqlite tests.')
     TEST_SQLITE = False
 
+TableDescription = namedtuple('TableDescription', 'sql column_names')
+
 class AbstractDatabaseTestCase:
     
     __metaclass__ = ABCMeta
     
     TABLES = {
-        'one_column': '''CREATE TABLE one_column ("column" varchar(800))''',
-        'one_unique_column': '''CREATE TABLE one_unique_column
-                                    ("column" integer UNIQUE)'''
+        'one_column': TableDescription(sql='''
+CREATE TABLE one_column ("column" varchar(800))''',
+                                       column_names=('column',)),
+        'one_unique_column': TableDescription(sql='''
+CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
+                                              column_names=('column',))
     }
 
     def setUp(self):
@@ -51,6 +57,11 @@ class AbstractDatabaseTestCase:
         views = set()
         self.assertEqual(set(self.inspector._get_views()), views)
 
+    def test_column_names(self):
+        for table, description in self.TABLES.items():
+            self.assertEqual(set(self.inspector._get_columns(table)),
+                             set(description.column_names))
+        
     # protected:
     
     @abstractmethod
@@ -60,8 +71,8 @@ class AbstractDatabaseTestCase:
     def _add_tables(self):
         conn = self._get_connection()
         cursor = conn.cursor()
-        for stmt in self.TABLES.values():
-            cursor.execute(stmt);
+        for description in self.TABLES.values():
+            cursor.execute(description.sql);
         conn.commit()
         cursor.close()
         conn.close()
@@ -87,7 +98,8 @@ class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
     USER = 'fathom'
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
-    TABLES['empty'] = '''CREATE TABLE empty()'''
+    TABLES['empty'] = TableDescription(sql='''CREATE TABLE empty()''',
+                                       column_names=())
 
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
