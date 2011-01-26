@@ -21,7 +21,7 @@ class DatabaseInspector:
         return [row[0] for row in self._select(self._TABLE_NAMES_SQL)]
         
     @abstractmethod
-    def get_columns(self, table):
+    def _get_columns(self, table):
         pass
         
     def _get_views(self):
@@ -85,7 +85,7 @@ class SqliteInspector(DatabaseInspector):
     def get_stored_procedures(self):
         return []
         
-    def get_columns(self, table):
+    def _get_columns(self, table):
         sql = self._COLUMN_NAMES_SQL % table
         # only one row should be returned with only one value
         table_sql = self._select(sql)[0][0]
@@ -127,7 +127,7 @@ class PostgresInspector(DatabaseInspector):
     def get_stored_procedures(self):
         pass
         
-    def get_columns(self, table):
+    def _get_columns(self, table):
         sql = self._COLUMN_NAMES_SQL % table
         return [row[0] for row in self._select(sql)]
 
