@@ -89,15 +89,7 @@ class SqliteInspector(DatabaseInspector):
         sql = self._COLUMN_NAMES_SQL % table
         # only one row should be returned with only one value
         table_sql = self._select(sql)[0][0]
-        return self._parse_table_sql(table_sql)
-        
-    def _parse_table_sql(self, sql):
-        def strip(column):
-            if column[0] == column[-1] == '"':
-                return column[1:-1]
-            else:
-                return column
-        return [strip(column) for column in CreateTableParser().parse(sql)]
+        return CreateTableParser(table_sql).column_names()
 
 
 class PostgresInspector(DatabaseInspector):
