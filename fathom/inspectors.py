@@ -16,18 +16,18 @@ class DatabaseInspector:
     def __init__(self, *db_params):
         self._db_params = db_params
         
-    def _get_tables(self):
+    def get_tables(self):
         '''Return names of all tables in the database.'''
-        return [row[0] for row in self._select(self._TABLE_NAMES_SQL)]
+        return [Table(row[0]) for row in self._select(self._TABLE_NAMES_SQL)]
         
+    def get_views(self):
+        '''Return names of all views in the database.'''
+        return [row[0] for row in self._select(self._VIEW_NAMES_SQL)]
+                
     @abstractmethod
     def _get_columns(self, table):
         pass
-        
-    def _get_views(self):
-        '''Return names of all views in the database.'''
-        return [row[0] for row in self._select(self._VIEW_NAMES_SQL)]
-        
+                
     def _get_indices(self):
         '''Return names of all indices in the database.'''
         return [row[0] for row in self._select(self._INDEX_NAMES_SQL)]
@@ -38,19 +38,7 @@ class DatabaseInspector:
         
     def supports_stored_procedures(self):
         return True
-        
-    def build_scheme(self):
-        database = Database()
-        for table_name in self._get_tables():
-            table = database.add_table(table_name)
-            for column_name in self.get_columns(table_name):
-                column = table.add_column(column_name)
-        for view_name in self._get_views():
-            view = database.add_view(view_name)
-        for index_name in self._get_indices():
-            index = database.add_index(index_name)
-        return database
-    
+                    
     def _select(self, sql):
         connection = self._api.connect(*self._db_params)
         cursor = connection.cursor()
