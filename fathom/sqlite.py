@@ -5,6 +5,8 @@ from pyparsing import (Literal, CaselessLiteral, Word, Upcase, delimitedList,
                        ParseException, Forward, oneOf, quotedString, 
                        ZeroOrMore, restOfLine, Keyword, White, Suppress,
                        OneOrMore, StringEnd, ParseResults)
+                       
+from schema import Column
 
 class CreateTableParser(object):
 
@@ -70,6 +72,11 @@ class CreateTableParser(object):
 
     def parse(self, sql, table):
         self.tokens = self.create_table_stmt.parseString(sql)
+        columns = {}
+        for column in self.tokens.columns:
+            column_name = clear_identifier(column[0])
+            columns[column_name] = Column(column_name)
+        table.columns = columns
 
 def clear_identifier(identifier):
     if identifier[0] == '"' and identifier[-1] == '"':
