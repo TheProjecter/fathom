@@ -65,17 +65,16 @@ class CreateTableParser(object):
     multi_column_constraint << ZeroOrMore(column_constraint)
     #column_constraint << 
             
-    def __init__(self, sql):
+    def __init__(self):
         super(CreateTableParser, self).__init__()
-        self.tokens = self.create_table_stmt.parseString(sql)
 
-    def column_names(self):
-        result = []
-        for column in self.tokens.columns:
-            result.append(clear_identifier(column[0]))
-        return result
+    def parse(self, sql, table):
+        self.tokens = self.create_table_stmt.parseString(sql)
 
 def clear_identifier(identifier):
     if identifier[0] == '"' and identifier[-1] == '"':
         identifier = identifier[1:-1]
     return identifier
+
+def parse_table(sql, table):
+    CreateTableParser().parse(sql, table)
