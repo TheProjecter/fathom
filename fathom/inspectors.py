@@ -76,7 +76,7 @@ class SqliteInspector(DatabaseInspector):
         return []
         
     def fill_table(self, table):
-        sql = self._COLUMN_NAMES_SQL % table
+        sql = self._COLUMN_NAMES_SQL % table.name
         # only one row should be returned with only one value
         table_sql = self._select(sql)[0][0]
         self.parse_table(table_sql, table)
@@ -111,5 +111,6 @@ class PostgresInspector(DatabaseInspector):
 
     def fill_table(self, table):
         sql = self._COLUMN_NAMES_SQL % table.name
-        table.columns = [Column(row[0]) for row in self._select(sql)]
+        table.columns = dict((row[0], Column(row[0])) 
+                             for row in self._select(sql))
 

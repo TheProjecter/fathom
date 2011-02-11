@@ -73,8 +73,8 @@ CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
     def test_column_names(self):
         for name, description in self.TABLES.items():
             table = self.db.tables[name]
-            self.assertEqual(set([column.name for column in table.columns]),
-                             set(description.column_names))
+            names = set(column.name for column in table.columns.values())
+            self.assertEqual(names, set(description.column_names))
                 
     # protected:
     
