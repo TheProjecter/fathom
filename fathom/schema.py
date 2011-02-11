@@ -16,7 +16,7 @@ class Database(object):
         if self.inspector is not None:
             self._tables = self.inspector.get_tables()
         else:
-            self._tables = []
+            self._tables = {}
         
     def _get_tables(self):
         if self._tables is None:
@@ -57,15 +57,22 @@ class Database(object):
 
 class Table(object):
     
-    def __init__(self, name):
+    def __init__(self, name, inspector=None):
         super(Table, self).__init__()
         self.name = name
-        self.columns = dict()
+        self._columns = None
+        self.inspector = inspector
         
-    def add_column(self, name):
-        self.columns[name] = Column(name)
-        return self.columns[name]
-        
+    def _get_columns(self):
+        if self._columns is None:
+            self.inspector.fill_table(self)
+        return self._columns
+    
+    def _set_columns(self, columns):
+        self._columns = columns
+    
+    columns = property(_get_columns, _set_columns)
+
 
 class View(object):
     

@@ -63,12 +63,18 @@ CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
     # tests
 
     def test_table_names(self):
-        self.assertEqual(set([table.name for table in self.db.tables]), 
+        self.assertEqual(set([table.name for table in self.db.tables.values()]), 
                          set(self.TABLES.keys()))
         
     def test_view_names(self):
         self.assertEqual(set([table.name for table in self.db.views]), 
                          set(self.VIEWS.keys()))
+                         
+    def test_column_names(self):
+        for name, description in self.TABLES.items():
+            table = self.db.tables[name]
+            self.assertEqual(set([column.name for column in table.columns]),
+                             set(description.column_names))
                 
     # protected:
     
