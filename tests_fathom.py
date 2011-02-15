@@ -22,6 +22,7 @@ except:
     TEST_SQLITE = False
 
 TableDescription = namedtuple('TableDescription', 'sql column_names')
+ViewDescription = namedtuple('ViewDescription', 'sql columns tables')
 
 class AbstractDatabaseTestCase:
     
@@ -37,6 +38,10 @@ CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
     }
     
     VIEWS = {
+        'one_column_view': ViewDescription(sql='''
+CREATE VIEW one_column_view AS (SELECT column FROM one_column);''',
+                                           columns=('column',),
+                                           tables=('one_column',))
     }
 
     @classmethod
@@ -67,7 +72,7 @@ CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
                          set(self.TABLES.keys()))
         
     def test_view_names(self):
-        self.assertEqual(set([table.name for table in self.db.views]), 
+        self.assertEqual(set([view.name for view in self.db.views]), 
                          set(self.VIEWS.keys()))
                          
     def test_column_names(self):
@@ -75,7 +80,7 @@ CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
             table = self.db.tables[name]
             names = set(column.name for column in table.columns.values())
             self.assertEqual(names, set(description.column_names))
-                
+                            
     # protected:
     
     @abstractmethod
