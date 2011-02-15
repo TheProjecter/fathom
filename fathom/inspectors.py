@@ -113,4 +113,3 @@ class PostgresInspector(DatabaseInspector):
         sql = self._COLUMN_NAMES_SQL % table.name
         table.columns = dict((row[0], Column(row[0])) 
                              for row in self._select(sql))
-

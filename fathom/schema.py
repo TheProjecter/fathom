@@ -98,6 +98,7 @@ class StoredProcedure(object):
 
 class Column(object):
     
-    def __init__(self, name):
+    def __init__(self, name, type):
         super(Column, self).__init__()
         self.name = name
+        self.type = type
