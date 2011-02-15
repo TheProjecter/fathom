@@ -21,7 +21,8 @@ try:
 except:
     TEST_SQLITE = False
 
-TableDescription = namedtuple('TableDescription', 'sql column_names')
+TableDescription = namedtuple('TableDescription', 
+                              'sql column_names column_types')
 ViewDescription = namedtuple('ViewDescription', 'sql columns tables')
 
 class AbstractDatabaseTestCase:
@@ -31,15 +32,17 @@ class AbstractDatabaseTestCase:
     TABLES = {
         'one_column': TableDescription(sql='''
 CREATE TABLE one_column ("column" varchar(800))''',
-                                       column_names=('column',)),
+                                       column_names=('column',),
+                                       column_types=('varchar(800)',)),
         'one_unique_column': TableDescription(sql='''
 CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
-                                              column_names=('column',))
+                                              column_names=('column',),
+                                              column_types=('integer',))
     }
     
     VIEWS = {
         'one_column_view': ViewDescription(sql='''
-CREATE VIEW one_column_view AS (SELECT column FROM one_column);''',
+CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
                                            columns=('column',),
                                            tables=('one_column',))
     }
@@ -48,22 +51,15 @@ CREATE VIEW one_column_view AS (SELECT column FROM one_column);''',
     def setUpClass(Class):
         try:
             Class._add_tables()
+            Class._add_views()
         except Class.DATABASE_ERRORS:
-            self.tearDownClass()
+            Class.tearDownClass()
             raise
         
     @classmethod
     def tearDownClass(Class):
-        conn = Class._get_connection()
-        cursor = conn.cursor()
-        for name in Class.TABLES:
-            try:
-                cursor.execute('DROP TABLE %s' % name);
-            except Class.DATABASE_ERRORS:
-                pass # maybe it was not created, but we need to try drop other
-        conn.commit()
-        cursor.close()
-        conn.close()
+        Class._drop_views()
+        Class._drop_tables()
 
     # tests
 
@@ -80,22 +76,62 @@ CREATE VIEW one_column_view AS (SELECT column FROM one_column);''',
             table = self.db.tables[name]
             names = set(column.name for column in table.columns.values())
             self.assertEqual(names, set(description.column_names))
-                            
+
+    def test_column_types(self):
+        for name, description in self.TABLES.items():
+            table = self.db.tables[name]
+            types = set(column.type for column in table.columns.values())
+            self.assertEqual(types, set(description.column_types))
+
     # protected:
     
     @abstractmethod
     def _get_connection(Class):
         pass
-        
+    
     @classmethod
-    def _add_tables(Class):
+    def _run_using_cursor(Class, function):
         conn = Class._get_connection()
         cursor = conn.cursor()
-        for description in Class.TABLES.values():
-            cursor.execute(description.sql);
+        function(Class, cursor)
         conn.commit()
         cursor.close()
         conn.close()
+    
+    @classmethod
+    def _add_tables(Class):
+        def function(Class, cursor):
+            for description in Class.TABLES.values():
+                cursor.execute(description.sql);
+        Class._run_using_cursor(function)
+        
+    @classmethod    
+    def _drop_tables(Class):
+        def function(Class, cursor):
+            for name in Class.TABLES:
+                try:
+                    cursor.execute('DROP TABLE %s' % name);
+                except Class.DATABASE_ERRORS:
+                    pass # maybe it was not created, we need to try drop other
+        Class._run_using_cursor(function)
+
+    @classmethod
+    def _add_views(Class):
+        def function(Class, cursor):
+            for description in Class.VIEWS.values():
+                cursor.execute(description.sql)
+        Class._run_using_cursor(function)
+        
+    @classmethod
+    def _drop_views(Class):
+        def function(Class, cursor):
+            for name in Class.VIEWS:
+                try:
+                    cursor.execute('DROP VIEW %s' % name)
+                except Class.DATABASE_ERRORS:
+                    pass # maybe it was not created, we need to try drop other
+        Class._run_using_cursor(function)
+
 
 @skipUnless(TEST_POSTGRES, 'Failed to import psycopg2 module.')
 class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
@@ -106,7 +142,7 @@ class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
     TABLES['empty'] = TableDescription(sql='''CREATE TABLE empty()''',
-                                       column_names=())
+                                       column_names=(), column_types=())
 
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)

@@ -75,7 +75,8 @@ class CreateTableParser(object):
         columns = {}
         for column in self.tokens.columns:
             column_name = clear_identifier(column[0])
-            columns[column_name] = Column(column_name)
+            column_type = ''.join(column.column_types[0])
+            columns[column_name] = Column(column_name, column_type)
         table.columns = columns
 
 def clear_identifier(identifier):
