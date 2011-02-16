@@ -84,22 +84,25 @@ class SqliteInspector(DatabaseInspector):
 
 class PostgresInspector(DatabaseInspector):
     
-    _TABLE_NAMES_SQL = """SELECT table_name 
-                          FROM information_schema.tables 
-                          WHERE table_schema = 'public' AND 
-                                table_type = 'BASE TABLE'"""
+    _TABLE_NAMES_SQL = """
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"""
                           
-    _VIEW_NAMES_SQL = """SELECT viewname
-                         FROM pg_views
-                         WHERE schemaname = 'public'"""
+    _VIEW_NAMES_SQL = """
+SELECT viewname
+FROM pg_views
+WHERE schemaname = 'public'"""
                           
-    _COLUMN_NAMES_SQL = """SELECT column_name 
-                           FROM information_schema.columns
-                           WHERE table_name = '%s'"""
+    _COLUMN_NAMES_SQL = """
+SELECT column_name, data_type, character_maximum_length
+FROM information_schema.columns
+WHERE table_name = '%s'"""
                            
-    _INDEX_NAMES_SQL = """SELECT indexname
-                          FROM pg_indexes
-                          WHERE schemaname = 'public'"""
+    _INDEX_NAMES_SQL = """
+SELECT indexname
+FROM pg_indexes
+WHERE schemaname = 'public'"""
     
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -111,5 +114,15 @@ class PostgresInspector(DatabaseInspector):
 
     def fill_table(self, table):
         sql = self._COLUMN_NAMES_SQL % table.name
-        table.columns = dict((row[0], Column(row[0])) 
+        table.columns = dict((row[0], self.prepare_column(row)) 
                              for row in self._select(sql))
+    
+    @staticmethod                         
+    def prepare_column(row):
+        # because PostgreSQL keeps varchar type as character varying, we need
+        # to rename this type and get also store maximum length
+        if row[1] == 'character varying':
+            data_type = 'varchar(%s)' % row[2]
+        else:
+            data_type = row[1]
+        return Column(row[0], data_type)
