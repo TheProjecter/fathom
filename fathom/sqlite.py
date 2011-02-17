@@ -4,7 +4,7 @@ from pyparsing import (Literal, CaselessLiteral, Word, Upcase, delimitedList,
                        Optional, Combine, Group, alphas, nums, alphanums, 
                        ParseException, Forward, oneOf, quotedString, 
                        ZeroOrMore, restOfLine, Keyword, White, Suppress,
-                       OneOrMore, StringEnd, ParseResults)
+                       OneOrMore, StringEnd, ParseResults, NotAny, And)
                        
 from schema import Column
 
@@ -21,15 +21,16 @@ class CreateTableParser(object):
     AS = Keyword('AS', caseless=True)
     PRIMARY = Keyword('PRIMARY', caseless=True)
     KEY = Keyword('KEY', caseless=True)
+    UNIQUE = Keyword('UNIQUE', caseless=True)
+    NULL = Keyword('NULL', caseless=True)
     keywords_set = (CREATE | TEMP | TEMPORARY | TABLE | IF | NOT | EXISTS | 
-                    AS | PRIMARY | KEY)
-    
+                    AS | PRIMARY | KEY | UNIQUE | NULL)
+        
     # different types of identifier objects
-    identifier = (Combine(Optional('"') + Word(alphanums) + 
+    identifier = (~keywords_set + (Optional('"') + Word(alphanums) + 
                           ZeroOrMore('_' + Word(alphanums)) + 
-                          Optional('"')) & ~keywords_set)
-    identifier_coma = ((ZeroOrMore(identifier.copy() + ",") + Optional(identifier.copy())) | 
-                      Optional(identifier.copy()))
+                          Optional('"')))
+    identifier_coma = delimitedList(identifier.copy())
     identifier_white = OneOrMore(identifier.copy())
         
     # statements used in sqlite 'CREATE TABLE' reference
@@ -58,14 +59,13 @@ class CreateTableParser(object):
                            ('(' + multi_column_def + 
                             Optional(multi_table_constraint) + ')')) + 
                            StringEnd())
-    multi_column_def << ((OneOrMore(column_def + ',') + column_def) |
-                         Optional(column_def))
+    multi_column_def << delimitedList(column_def)
     column_def << column_name + Optional(type_name) + multi_column_constraint
     type_name << (identifier_white.copy() + 
                   Optional('(' + Word(nums) + 
                            (')' | (',' + Word(nums) + ')'))))
     multi_column_constraint << ZeroOrMore(column_constraint)
-    #column_constraint << 
+    column_constraint << (UNIQUE | (NOT + NULL))
             
     def __init__(self):
         super(CreateTableParser, self).__init__()
@@ -74,7 +74,7 @@ class CreateTableParser(object):
         self.tokens = self.create_table_stmt.parseString(sql)
         columns = {}
         for column in self.tokens.columns:
-            column_name = clear_identifier(column[0])
+            column_name = clear_identifier(''.join(column.column_name[0]))
             column_type = ''.join(column.column_types[0])
             columns[column_name] = Column(column_name, column_type)
         table.columns = columns
@@ -86,3 +86,9 @@ def clear_identifier(identifier):
 
 def parse_table(sql, table):
     CreateTableParser().parse(sql, table)
+
+if __name__ == "__main__":
+    sql = '''
+CREATE TABLE one_column ("column" varchar(800))'''
+    CreateTableParser().parse(sql, None)
+    
