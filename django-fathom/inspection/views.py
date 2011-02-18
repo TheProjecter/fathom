@@ -39,7 +39,6 @@ def table(request, database, template, **kwargs):
         table = database.tables[table_name]
     except KeyError:
         raise Http404
-    print table.columns
     dictionary = {'table': table}
     return render_to_response(template, dictionary,
                               context_instance=RequestContext(request))
