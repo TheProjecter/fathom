@@ -26,6 +26,10 @@ class CreateTableParser(object):
     REFERENCES = Keyword('REFERENCES', caseless=True)
     keywords_set = (CREATE | TEMP | TEMPORARY | TABLE | IF | NOT | EXISTS | 
                     AS | PRIMARY | KEY | UNIQUE | NULL | REFERENCES)
+
+    NOT_NULL = (NOT + NULL)
+    PRIMARY_KEY = (PRIMARY + KEY)
+    IF_NOT_EXISTS = (IF + NOT + EXISTS)
         
     # different types of identifier objects
     identifier = (~keywords_set + (Optional('"') + Word(alphanums) + 
@@ -37,9 +41,12 @@ class CreateTableParser(object):
     # statements used in sqlite 'CREATE TABLE' reference
     create_table_stmt = Forward()
     select_stmt = Forward()
+    create_table_body = Forward()
     column_def = Forward().setResultsName('columns', listAllMatches=True)
     type_name = Forward().setResultsName('column_types', listAllMatches=True)
     column_constraint = Forward()
+    table_constraint = Forward().setResultsName('table_constraint', 
+                                                listAllMatches=True)
 
     # special statements for multiple occurance of certain statement
     multi_column_def = Forward()
@@ -54,20 +61,23 @@ class CreateTableParser(object):
                                                 
     # building statement as described in sqlite 'CREATE TABLE' reference        
     create_table_stmt << (CREATE + Optional(TEMP | TEMPORARY) + TABLE + 
-                          Optional(IF + NOT + EXISTS) + 
+                          Optional(IF_NOT_EXISTS) + 
                           Optional(database_name + '.') + table_name +
-                          ((AS + select_stmt) | 
-                           ('(' + multi_column_def + 
-                            Optional(multi_table_constraint) + ')')) + 
+                          ((AS + select_stmt) | create_table_body) +
                            StringEnd())
+    create_table_body << ('(' + multi_column_def + 
+                            Optional("," + multi_table_constraint) + ')')
+
     multi_column_def << delimitedList(column_def)
     column_def << column_name + Optional(type_name) + multi_column_constraint
     type_name << (identifier_white.copy() + 
                   Optional('(' + Word(nums) + 
                            (')' | (',' + Word(nums) + ')'))))
     multi_column_constraint << ZeroOrMore(column_constraint)
-    column_constraint << (UNIQUE | (NOT + NULL) | (PRIMARY + KEY) | 
+    column_constraint << (UNIQUE | NOT_NULL | PRIMARY_KEY | 
                           (REFERENCES + identifier  + "(" + identifier + ")"))
+    multi_table_constraint << ZeroOrMore(table_constraint)
+    table_constraint << (UNIQUE + "(" + identifier_coma + ")")
             
     def __init__(self):
         super(CreateTableParser, self).__init__()
@@ -103,15 +113,12 @@ def parse_table(sql, table):
 
 if __name__ == "__main__":
     sql = '''
-CREATE TABLE "django_admin_log" (
+CREATE TABLE "auth_permission" (
     "id" integer NOT NULL PRIMARY KEY,
-    "action_time" datetime NOT NULL,
-    "user_id" integer NOT NULL REFERENCES "auth_user" ("id"),
-    "content_type_id" integer REFERENCES "django_content_type" ("id"),
-    "object_id" text,
-    "object_repr" varchar(200) NOT NULL,
-    "action_flag" smallint unsigned NOT NULL,
-    "change_message" text NOT NULL
+    "name" varchar(50) NOT NULL,
+    "content_type_id" integer NOT NULL,
+    "codename" varchar(100) NOT NULL,
+    UNIQUE ("content_type_id", "codename")
 )'''
     CreateTableParser().parse(sql, None)
     
