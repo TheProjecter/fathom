@@ -178,8 +178,17 @@ column_names=('id', 'action_time', 'user_id', 'content_type_id', 'object_id',
               'object_repr', 'action_flag', 'change_message'),
 column_types=('integer', 'datetime', 'integer', 'integer', 'text', 
               'varchar(200)', 'smallint unsigned', 'text'))
+    TABLES['auth_permission'] = TableDescription(sql='''
+CREATE TABLE "auth_permission" (
+    "id" integer NOT NULL PRIMARY KEY,
+    "name" varchar(50) NOT NULL,
+    "content_type_id" integer NOT NULL,
+    "codename" varchar(100) NOT NULL,
+    UNIQUE ("content_type_id", "codename")
+)''',
+column_names=('id', 'name', 'content_type_id', 'codename'),
+column_types=('integer', 'varchar(50)', 'integer', 'varchar(100)'))
 
-    
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
         self.db = get_sqlite3_database(self.PATH)
