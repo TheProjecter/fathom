@@ -1,11 +1,13 @@
 # Create your views here.
 
+from django.http import Http404
 from django.shortcuts import render_to_response
 
 from inspection import get_databases, get_database
 
 INDEX_TEMPLATE = 'index.html'
 LIST_TABLES_TEMPLATE = 'list_tables.html'
+TABLE_TEMPLATE = 'table.html'
 
 def inspection_view(default_template):
     def _decorator(function):
@@ -29,9 +31,12 @@ def database(request, inspector, template, **kwargs):
     dictionary = {'inspector': inspector, 'database': inspector.build_scheme()}
     return render_to_response(template, dictionary)
 
-@inspection_view('table.html')
-def table(request, inspector, template, **kwargs):
+@inspection_view(TABLE_TEMPLATE)
+def table(request, database, template, **kwargs):
     table_name = kwargs.get('table')
-    columns = inspector.get_columns(table_name)
-    dictionary = {'columns': columns, 'table_name': table_name}
+    try:
+        table = database.tables[table_name]
+    except KeyError:
+        raise Http404
+    dictionary = {'table': table}
     return render_to_response(template, dictionary)
