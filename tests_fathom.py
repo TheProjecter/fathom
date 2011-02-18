@@ -37,7 +37,7 @@ CREATE TABLE one_column ("column" varchar(800))''',
         'one_unique_column': TableDescription(sql='''
 CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
                                               column_names=('column',),
-                                              column_types=('integer',))
+                                              column_types=('integer',)),                                              
     }
     
     VIEWS = {
@@ -52,7 +52,8 @@ CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
         try:
             Class._add_tables()
             Class._add_views()
-        except Class.DATABASE_ERRORS:
+        except Class.DATABASE_ERRORS as e:
+            print e
             Class.tearDownClass()
             raise
         
@@ -160,6 +161,24 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
     
     PATH = 'fathom.db3'
     DATABASE_ERRORS = (sqlite3.OperationalError, sqlite3.ProgrammingError)
+    
+    TABLES = AbstractDatabaseTestCase.TABLES.copy()
+    TABLES['django_admin_log'] = TableDescription(sql='''
+CREATE TABLE "django_admin_log" (
+    "id" integer NOT NULL PRIMARY KEY,
+    "action_time" datetime NOT NULL,
+    "user_id" integer NOT NULL REFERENCES "auth_user" ("id"),
+    "content_type_id" integer REFERENCES "django_content_type" ("id"),
+    "object_id" text,
+    "object_repr" varchar(200) NOT NULL,
+    "action_flag" smallint unsigned NOT NULL,
+    "change_message" text NOT NULL
+)''',
+column_names=('id', 'action_time', 'user_id', 'content_type_id', 'object_id',
+              'object_repr', 'action_flag', 'change_message'),
+column_types=('integer', 'datetime', 'integer', 'integer', 'text', 
+              'varchar(200)', 'smallint unsigned', 'text'))
+
     
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
