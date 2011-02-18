@@ -31,9 +31,6 @@
 
 {% block bodyclass %}change-list{% endblock %}
 
-{% block breadcrumbs %}
-{% endblock %}
-
 {% block coltype %}flex{% endblock %}
 
 {% block content %}
@@ -44,7 +41,9 @@
             </tr>
             {% for name, table in database.tables.items %}
             <tr>
-                <td>{{ name }}</td>
+                <td>
+                    <a href="../table/{{ name }}/">{{ name }}</a>
+                </td>
             </tr>
             {% endfor %}
         </table>
