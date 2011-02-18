@@ -1,31 +1,7 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+{% extends 'admin/base_site.html' %}
 
-    <head>
-        <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
-        <title>{%block title %}{% endblock %}</title>
-        
-        <!-- jquery links -->
-        <script type="text/javascript" src="/static/js/jquery.js"></script>
-        <script type="text/javascript" src="/static/js/jquery-ui.js"></script>
-        <link rel="stylesheet" type="text/css" href="/static/css/jquery-ui/jquery-ui.css">
-        
-        <link rel="stylesheet" type="text/css" href="/static/css/inspection.css">
-        {% block head %}
-        {% endblock %}
-        
-        {% block script %}
-        {% endblock %}
-    </head>
+{% load i18n %}
 
-    <body>
-        <div class="header">
-            django-fathom: web database inspection
-        </div>
-        <div class="content">
-            {% block content %}
-            {% endblock %}
-        </div>
-    </body>
-
-</html>
+{% block branding %}
+<h1 id="site-name">{% trans 'Fathom inspection' %}</h1>
+{% endblock %}

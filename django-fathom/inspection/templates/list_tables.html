@@ -1,21 +1,52 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load adminmedia admin_list i18n %}
 
-{% load i18n %}
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="{% admin_media_prefix %}css/changelists.css" />
+  
+  {{ media.css }}
+  {% if not actions_on_top and not actions_on_bottom %}
+    <style>
+      #changelist table thead th:first-child {width: inherit}
+    </style>
+  {% endif %}
+{% endblock %}
 
-{% block body %}
-<div id="content-main">
+{% block extrahead %}
 
-    <div class="module">
-    <table summary="{% blocktrans %}Tables in database{% endblocktrans %}">
-    <caption>{% blocktrans %}Tables:{% endblocktrans %}</caption>
-    {% for table in tables %}
-        <tr>
-            <th scope="row"><a href="">{{ table }}</a></th>
-            <td></td>
-        </tr>
-    {% endfor %}
-    </table>
+{{ block.super }}
+{{ media.js }}
+{% if action_form %}{% if actions_on_top or actions_on_bottom %}
+<script type="text/javascript">
+(function($) {
+    $(document).ready(function($) {
+        $("tr input.action-select").actions();
+    });
+})(django.jQuery);
+</script>
+{% endif %}{% endif %}
+
+{% endblock %}
+
+{% block bodyclass %}change-list{% endblock %}
+
+{% block breadcrumbs %}
+{% endblock %}
+
+{% block coltype %}flex{% endblock %}
+
+{% block content %}
+    <div id="content-main">
+        <table>
+            <tr>
+                <th>{% blocktrans %}Name:{% endblocktrans %}</th>
+            </tr>
+            {% for name, table in database.tables.items %}
+            <tr>
+                <td>{{ name }}</td>
+            </tr>
+            {% endfor %}
+        </table>
     </div>
-        
-</div>
 {% endblock %}
