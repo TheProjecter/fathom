@@ -23,8 +23,9 @@ class CreateTableParser(object):
     KEY = Keyword('KEY', caseless=True)
     UNIQUE = Keyword('UNIQUE', caseless=True)
     NULL = Keyword('NULL', caseless=True)
+    REFERENCES = Keyword('REFERENCES', caseless=True)
     keywords_set = (CREATE | TEMP | TEMPORARY | TABLE | IF | NOT | EXISTS | 
-                    AS | PRIMARY | KEY | UNIQUE | NULL)
+                    AS | PRIMARY | KEY | UNIQUE | NULL | REFERENCES)
         
     # different types of identifier objects
     identifier = (~keywords_set + (Optional('"') + Word(alphanums) + 
@@ -65,19 +66,32 @@ class CreateTableParser(object):
                   Optional('(' + Word(nums) + 
                            (')' | (',' + Word(nums) + ')'))))
     multi_column_constraint << ZeroOrMore(column_constraint)
-    column_constraint << (UNIQUE | (NOT + NULL))
+    column_constraint << (UNIQUE | (NOT + NULL) | (PRIMARY + KEY) | 
+                          (REFERENCES + identifier  + "(" + identifier + ")"))
             
     def __init__(self):
         super(CreateTableParser, self).__init__()
-
+        
     def parse(self, sql, table):
         self.tokens = self.create_table_stmt.parseString(sql)
         columns = {}
         for column in self.tokens.columns:
             column_name = clear_identifier(''.join(column.column_name[0]))
-            column_type = ''.join(column.column_types[0])
+            column_type = join_type(column.column_types[0])
             columns[column_name] = Column(column_name, column_type)
         table.columns = columns
+
+def join_type(parts):
+    brackets = ('(', ')')
+    separated = []
+    previous = None
+    for part in parts:
+        if (previous is not None and 
+            previous not in brackets and part not in brackets):
+            separated.append(' ')
+        separated.append(part)
+        previous = part
+    return ''.join(separated)
 
 def clear_identifier(identifier):
     if identifier[0] == '"' and identifier[-1] == '"':
@@ -89,6 +103,15 @@ def parse_table(sql, table):
 
 if __name__ == "__main__":
     sql = '''
-CREATE TABLE one_column ("column" varchar(800))'''
+CREATE TABLE "django_admin_log" (
+    "id" integer NOT NULL PRIMARY KEY,
+    "action_time" datetime NOT NULL,
+    "user_id" integer NOT NULL REFERENCES "auth_user" ("id"),
+    "content_type_id" integer REFERENCES "django_content_type" ("id"),
+    "object_id" text,
+    "object_repr" varchar(200) NOT NULL,
+    "action_flag" smallint unsigned NOT NULL,
+    "change_message" text NOT NULL
+)'''
     CreateTableParser().parse(sql, None)
     
