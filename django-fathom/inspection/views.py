@@ -2,6 +2,7 @@
 
 from django.http import Http404
 from django.shortcuts import render_to_response
+from django.template import RequestContext
 
 from inspection import get_databases, get_database
 
@@ -38,5 +39,7 @@ def table(request, database, template, **kwargs):
         table = database.tables[table_name]
     except KeyError:
         raise Http404
+    print table.columns
     dictionary = {'table': table}
-    return render_to_response(template, dictionary)
+    return render_to_response(template, dictionary,
+                              context_instance=RequestContext(request))
