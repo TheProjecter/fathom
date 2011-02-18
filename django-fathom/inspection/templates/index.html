@@ -1,31 +1,43 @@
-{% extends 'base.html' %}
+{% extends 'admin/base_site.html' %}
 
 {% load i18n %}
 
-{% block body %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" type="text/css" href="{% load adminmedia %}{% admin_media_prefix %}css/dashboard.css" />{% endblock %}
 
-    {% for label, inspector in inspectors %}
+{% block coltype %}colMS{% endblock %}
 
-        <div class="caption">{% blocktrans %}Database:{% endblocktrans %} {{ label }}</div>
-        
-        <div class="tables">
-            <a href="/inspection/{{ label }}/tables/">
-                {% blocktrans %}Tables{% endblocktrans %}
-            </a>
+{% block bodyclass %}dashboard{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">{% trans 'Fathom inspection' %}</h1>
+{% endblock %}
+
+{% block content %}
+
+    <div id="content-main">
+
+    {% for label, database in databases %}
+        <div class="module">
+            <table summary="{% blocktrans with label as label %}Objects wisible in {{ label }} database{% endblocktrans %}">
+                <caption><a href="" class="section">{{ label }}</a></caption>
+                <tr>
+                    <th scope="row">
+                        <a href="">{% trans 'Tables' %}</a>
+                    </th>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <a href="">{% trans 'Views' %}</a>
+                    </th>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+            </table>
         </div>
-        
-        {% if inspector.supports_stored_procedures %}
-        <div class="stored-procedures">
-            <a href="/inspection/{{ label }}/stored-procedures/">
-                {% blocktrans %}Stored procedures {% endblocktrans %}
-            </a>
-        </div>
-        {% endif %}
-        
-        <div class="views"><a href="/inspection/{{ label }}/views/">
-            {% blocktrans %}Views{% endblocktrans %}
-        </a></div>
-    
     {% endfor %}
+    
+    </div>
 
 {% endblock %}
