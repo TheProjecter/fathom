@@ -22,4 +22,4 @@ def get_databases():
     
 def get_database(label):
     '''Retrieve database with given label that was specified in settings.'''
-    return _build_inspector(project_settings.FATHOM[label])
+    return _get_database(project_settings.FATHOM[label])

@@ -1,4 +1,4 @@
-{% extends 'admin/base_site.html' %}
+{% extends 'base.html' %}
 
 {% load i18n %}
 
@@ -7,10 +7,6 @@
 {% block coltype %}colMS{% endblock %}
 
 {% block bodyclass %}dashboard{% endblock %}
-
-{% block branding %}
-<h1 id="site-name">{% trans 'Fathom inspection' %}</h1>
-{% endblock %}
 
 {% block content %}
 
@@ -22,14 +18,14 @@
                 <caption><a href="" class="section">{{ label }}</a></caption>
                 <tr>
                     <th scope="row">
-                        <a href="">{% trans 'Tables' %}</a>
+                        <a href="{{ label }}/tables/">{% trans 'Tables' %}</a>
                     </th>
                     <td>&nbsp;</td>
                     <td>&nbsp;</td>
                 </tr>
                 <tr>
                     <th scope="row">
-                        <a href="">{% trans 'Views' %}</a>
+                        <a href="{{ label }}/views/">{% trans 'Views' %}</a>
                     </th>
                     <td>&nbsp;</td>
                     <td>&nbsp;</td>
