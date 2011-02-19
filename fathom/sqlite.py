@@ -8,6 +8,8 @@ from pyparsing import (Literal, CaselessLiteral, Word, Upcase, delimitedList,
                        
 from schema import Column
 
+# ???
+
 class CreateTableParser(object):
 
     # keywords:
@@ -19,13 +21,18 @@ class CreateTableParser(object):
     NOT = Keyword('NOT', caseless=True)
     EXISTS = Keyword('EXISTS', caseless=True)
     AS = Keyword('AS', caseless=True)
+    CONSTRAINT = Keyword('CONSTRAINT', caseless=True)
     PRIMARY = Keyword('PRIMARY', caseless=True)
     KEY = Keyword('KEY', caseless=True)
     UNIQUE = Keyword('UNIQUE', caseless=True)
     NULL = Keyword('NULL', caseless=True)
+    COLLATE = Keyword('COLLATE', caseless=True)
+    DEFAULT = Keyword('DEFAULT', caseless=True)
+    CHECK = Keyword('CHECK', caseless=True)
     REFERENCES = Keyword('REFERENCES', caseless=True)
     keywords_set = (CREATE | TEMP | TEMPORARY | TABLE | IF | NOT | EXISTS | 
-                    AS | PRIMARY | KEY | UNIQUE | NULL | REFERENCES)
+                    AS | PRIMARY | KEY | UNIQUE | NULL | REFERENCES | 
+                    CONSTRAINT | COLLATE | DEFAULT | CHECK)
 
     NOT_NULL = (NOT + NULL)
     PRIMARY_KEY = (PRIMARY + KEY)
@@ -74,8 +81,9 @@ class CreateTableParser(object):
                   Optional('(' + Word(nums) + 
                            (')' | (',' + Word(nums) + ')'))))
     multi_column_constraint << ZeroOrMore(column_constraint)
-    column_constraint << (UNIQUE | NOT_NULL | PRIMARY_KEY | 
-                          (REFERENCES + identifier  + "(" + identifier + ")"))
+    column_constraint << (Optional(CONSTRAINT + identifier) +
+                          (UNIQUE | NOT_NULL | PRIMARY_KEY | 
+                          (REFERENCES + identifier  + "(" + identifier + ")")))
     multi_table_constraint << ZeroOrMore(table_constraint)
     table_constraint << (UNIQUE + "(" + identifier_coma + ")")
             
