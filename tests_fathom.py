@@ -21,37 +21,24 @@ try:
 except:
     TEST_SQLITE = False
 
-TableDescription = namedtuple('TableDescription', 
-                              'sql column_names column_types')
-ViewDescription = namedtuple('ViewDescription', 'sql columns tables')
-
 class AbstractDatabaseTestCase:
     
     __metaclass__ = ABCMeta
     
     TABLES = {
-        'one_column': TableDescription(sql='''
-CREATE TABLE one_column ("column" varchar(800))''',
-                                       column_names=('column',),
-                                       column_types=('varchar(800)',)),
-        'one_unique_column': TableDescription(sql='''
-CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
-                                              column_names=('column',),
-                                              column_types=('integer',)),                                              
+        'one_column': '''CREATE TABLE one_column ("column" varchar(800))''',
+        'one_unique_column': '''CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
     }
     
     VIEWS = {
-        'one_column_view': ViewDescription(sql='''
-CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
-                                           columns=('column',),
-                                           tables=('one_column',))
+        'one_column_view': '''CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
     }
 
     @classmethod
     def setUpClass(Class):
         try:
-            Class._add_tables()
-            Class._add_views()
+            Class._add_operation(Class.TABLES.values())
+            Class._add_operation(Class.VIEWS.values())
         except Class.DATABASE_ERRORS as e:
             print e
             Class.tearDownClass()
@@ -59,8 +46,8 @@ CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
         
     @classmethod
     def tearDownClass(Class):
-        Class._drop_views()
-        Class._drop_tables()
+        Class._drop_operation('VIEW', Class.VIEWS)
+        Class._drop_operation('TABLE', Class.TABLES)
 
     # tests
 
@@ -69,21 +56,25 @@ CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
                          set(self.TABLES.keys()))
         
     def test_view_names(self):
-        self.assertEqual(set([view.name for view in self.db.views]), 
+        self.assertEqual(set([view.name for view in self.db.views.values()]), 
                          set(self.VIEWS.keys()))
                          
-    def test_column_names(self):
-        for name, description in self.TABLES.items():
-            table = self.db.tables[name]
-            names = set(column.name for column in table.columns.values())
-            self.assertEqual(names, set(description.column_names))
-
-    def test_column_types(self):
-        for name, description in self.TABLES.items():
-            table = self.db.tables[name]
-            types = set(column.type for column in table.columns.values())
-            self.assertEqual(types, set(description.column_types))
-
+    def test_table_one_column(self):
+        table = self.db.tables['one_column']
+        self.assertEqual(set(table.columns.keys()), set(['column']))
+        self.assertEqual(table.columns['column'].type, 'varchar(800)')
+        self.assertEqual(table.columns['column'].not_null, False)
+        
+    def test_table_one_unique_column(self):
+        table = self.db.tables['one_unique_column']
+        self.assertEqual(set(table.columns.keys()), set(['column']))
+        self.assertEqual(table.columns['column'].type, 'integer')
+        self.assertEqual(table.columns['column'].not_null, False)
+        
+    def test_view_one_column_view(self):
+        view = self.db.views['one_column_view']
+        self.assertEqual(set(view.columns.keys()), set(['column']))
+                         
     # protected:
     
     @abstractmethod
@@ -100,35 +91,18 @@ CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
         conn.close()
     
     @classmethod
-    def _add_tables(Class):
+    def _add_operation(Class, sqls):
         def function(Class, cursor):
-            for description in Class.TABLES.values():
-                cursor.execute(description.sql);
+            for sql in sqls:
+                cursor.execute(sql);
         Class._run_using_cursor(function)
         
     @classmethod    
-    def _drop_tables(Class):
+    def _drop_operation(Class, type, names):
         def function(Class, cursor):
-            for name in Class.TABLES:
+            for name in names:
                 try:
-                    cursor.execute('DROP TABLE %s' % name);
-                except Class.DATABASE_ERRORS:
-                    pass # maybe it was not created, we need to try drop other
-        Class._run_using_cursor(function)
-
-    @classmethod
-    def _add_views(Class):
-        def function(Class, cursor):
-            for description in Class.VIEWS.values():
-                cursor.execute(description.sql)
-        Class._run_using_cursor(function)
-        
-    @classmethod
-    def _drop_views(Class):
-        def function(Class, cursor):
-            for name in Class.VIEWS:
-                try:
-                    cursor.execute('DROP VIEW %s' % name)
+                    cursor.execute('DROP %s %s' % (type, name));
                 except Class.DATABASE_ERRORS:
                     pass # maybe it was not created, we need to try drop other
         Class._run_using_cursor(function)
@@ -142,14 +116,17 @@ class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
     DATABASE_ERRORS = (psycopg2.OperationalError, psycopg2.ProgrammingError)
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
-    TABLES['empty'] = TableDescription(sql='''CREATE TABLE empty()''',
-                                       column_names=(), column_types=())
+    TABLES['empty'] = '''CREATE TABLE empty()'''
 
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
         args = self.DBNAME, self.USER
         self.db = get_postgresql_database('dbname=%s user=%s' % args)
-
+        
+    def test_table_empty(self):
+        table = self.db.tables['empty']
+        self.assertEqual(set(table.columns.keys()), set())
+        
     @classmethod
     def _get_connection(Class):
         args = Class.DBNAME, Class.USER
@@ -163,31 +140,34 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
     DATABASE_ERRORS = (sqlite3.OperationalError, sqlite3.ProgrammingError)
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
-    TABLES['django_admin_log'] = TableDescription(sql='''
-CREATE TABLE "django_admin_log" (
-    "id" integer NOT NULL PRIMARY KEY,
-    "action_time" datetime NOT NULL,
-    "user_id" integer NOT NULL REFERENCES "auth_user" ("id"),
-    "content_type_id" integer REFERENCES "django_content_type" ("id"),
-    "object_id" text,
-    "object_repr" varchar(200) NOT NULL,
-    "action_flag" smallint unsigned NOT NULL,
-    "change_message" text NOT NULL
-)''',
-column_names=('id', 'action_time', 'user_id', 'content_type_id', 'object_id',
+    TABLES['django_admin_log'] = '''
+        CREATE TABLE "django_admin_log" (
+            "id" integer NOT NULL PRIMARY KEY,
+            "action_time" datetime NOT NULL,
+            "user_id" integer NOT NULL REFERENCES "auth_user" ("id"),
+            "content_type_id" integer REFERENCES "django_content_type" ("id"),
+            "object_id" text,
+            "object_repr" varchar(200) NOT NULL,
+            "action_flag" smallint unsigned NOT NULL,
+            "change_message" text NOT NULL
+        )'''
+    TABLES['auth_permission'] = '''
+        CREATE TABLE "auth_permission" (
+            "id" integer NOT NULL PRIMARY KEY,
+            "name" varchar(50) NOT NULL,
+            "content_type_id" integer NOT NULL,
+            "codename" varchar(100) NOT NULL,
+            UNIQUE ("content_type_id", "codename")
+        )'''
+
+    column_names=('id', 'action_time', 'user_id', 'content_type_id', 'object_id',
               'object_repr', 'action_flag', 'change_message'),
-column_types=('integer', 'datetime', 'integer', 'integer', 'text', 
-              'varchar(200)', 'smallint unsigned', 'text'))
-    TABLES['auth_permission'] = TableDescription(sql='''
-CREATE TABLE "auth_permission" (
-    "id" integer NOT NULL PRIMARY KEY,
-    "name" varchar(50) NOT NULL,
-    "content_type_id" integer NOT NULL,
-    "codename" varchar(100) NOT NULL,
-    UNIQUE ("content_type_id", "codename")
-)''',
-column_names=('id', 'name', 'content_type_id', 'codename'),
-column_types=('integer', 'varchar(50)', 'integer', 'varchar(100)'))
+    column_types=('integer', 'datetime', 'integer', 'integer', 'text', 
+              'varchar(200)', 'smallint unsigned', 'text')
+
+
+    column_names=('id', 'name', 'content_type_id', 'codename'),
+    column_types=('integer', 'varchar(50)', 'integer', 'varchar(100)')
 
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
