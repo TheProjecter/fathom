@@ -64,12 +64,15 @@ class AbstractDatabaseTestCase:
         self.assertEqual(set(table.columns.keys()), set(['column']))
         self.assertEqual(table.columns['column'].type, 'varchar(800)')
         self.assertEqual(table.columns['column'].not_null, False)
+        self.assertEqual(set(table.indices.keys()), set())
         
     def test_table_one_unique_column(self):
         table = self.db.tables['one_unique_column']
         self.assertEqual(set(table.columns.keys()), set(['column']))
         self.assertEqual(table.columns['column'].type, 'integer')
         self.assertEqual(table.columns['column'].not_null, False)
+        self.assertEqual(set(table.indices.keys()), 
+                         set(['sqlite_autoindex_one_unique_column_1']))
         
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
