@@ -72,11 +72,15 @@ class AbstractDatabaseTestCase:
         self.assertEqual(table.columns['column'].type, 'integer')
         self.assertEqual(table.columns['column'].not_null, False)
         self.assertEqual(set(table.indices.keys()), 
-                         set(['sqlite_autoindex_one_unique_column_1']))
+                         set([self.auto_index_name('one_unique_column')]))
         
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
         self.assertEqual(set(view.columns.keys()), set(['column']))
+        
+    @abstractmethod
+    def auto_index_name(self, table_name):
+        pass
                          
     # protected:
     
@@ -130,6 +134,9 @@ class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
         table = self.db.tables['empty']
         self.assertEqual(set(table.columns.keys()), set())
         
+    def auto_index_name(self, table_name):
+        return '%s_column_key' % table_name
+        
     @classmethod
     def _get_connection(Class):
         args = Class.DBNAME, Class.USER
@@ -175,6 +182,9 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
         self.db = get_sqlite3_database(self.PATH)
+
+    def auto_index_name(self, table_name):
+        return 'sqlite_autoindex_%s_1' % table_name
 
     @classmethod
     def _get_connection(Class):

@@ -77,6 +77,17 @@ class Table(WithColumns):
         super(Table, self).__init__()
         self.name = name
         self.inspector = inspector
+        self._indices = None
+
+    def _get_indices(self):
+        if self._indices is None:
+            self.inspector.build_indices(self)
+        return self._indices
+    
+    def _set_indices(self, indices):
+        self._indices = indices
+    
+    indices = property(_get_indices, _set_indices)
         
 
 class View(WithColumns):
