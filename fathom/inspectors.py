@@ -34,9 +34,13 @@ class DatabaseInspector:
         pass
         
     @abstractmethod
-    def get_stored_procedures(self):
+    def build_indices(self, table):
         pass
         
+    @abstractmethod
+    def get_stored_procedures(self):
+        pass
+                
     def supports_stored_procedures(self):
         return True
                     
@@ -60,6 +64,8 @@ class SqliteInspector(DatabaseInspector):
                          WHERE type= 'view'"""
     
     _COLUMN_NAMES_SQL = """pragma table_info(%s)"""
+    
+    _INDICES_NAMES_SQL = """pragma index_list(%s)"""
 
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -76,6 +82,9 @@ class SqliteInspector(DatabaseInspector):
         sql = self._COLUMN_NAMES_SQL % schema_object.name
         schema_object.columns = dict((row[1], self.prepare_column(row)) 
                                      for row in self._select(sql))
+                                     
+    def build_indices(self, table):
+        pass
                       
     @staticmethod
     def prepare_column(row):
@@ -104,6 +113,12 @@ WHERE table_name = '%s'"""
 SELECT indexname
 FROM pg_indexes
 WHERE schemaname = 'public'"""
+
+    _TABLE_INDICES_NAME_SQL = """
+SELECT indexname 
+FROM pg_indexes 
+WHERE schemaname='public' AND tablename='%s';
+"""
     
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -117,6 +132,11 @@ WHERE schemaname = 'public'"""
         sql = self._COLUMN_NAMES_SQL % schema_object.name
         schema_object.columns = dict((row[0], self.prepare_column(row)) 
                                      for row in self._select(sql))
+
+    def build_indices(self, table):
+        sql = self._TABLE_INDICES_NAME_SQL % table.name
+        table.indices = dict((row[0], Index(row[0])) 
+                             for row in self._select(sql))
     
     @staticmethod                         
     def prepare_column(row):
