@@ -65,7 +65,7 @@ class SqliteInspector(DatabaseInspector):
     
     _COLUMN_NAMES_SQL = """pragma table_info(%s)"""
     
-    _INDICES_NAMES_SQL = """pragma index_list(%s)"""
+    _TABLE_INDICE_NAMES_SQL = """pragma index_list(%s)"""
 
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -84,8 +84,10 @@ class SqliteInspector(DatabaseInspector):
                                      for row in self._select(sql))
                                      
     def build_indices(self, table):
-        pass
-                      
+        sql = self._TABLE_INDICE_NAMES_SQL % table.name
+        table.indices = dict((row[1], Index(row[0]))
+                             for row in self._select(sql))
+        
     @staticmethod
     def prepare_column(row):
         not_null = bool(row[3])
@@ -114,7 +116,7 @@ SELECT indexname
 FROM pg_indexes
 WHERE schemaname = 'public'"""
 
-    _TABLE_INDICES_NAME_SQL = """
+    _TABLE_INDICE_NAMES_SQL = """
 SELECT indexname 
 FROM pg_indexes 
 WHERE schemaname='public' AND tablename='%s';
@@ -134,7 +136,7 @@ WHERE schemaname='public' AND tablename='%s';
                                      for row in self._select(sql))
 
     def build_indices(self, table):
-        sql = self._TABLE_INDICES_NAME_SQL % table.name
+        sql = self._TABLE_INDICE_NAMES_SQL % table.name
         table.indices = dict((row[0], Index(row[0])) 
                              for row in self._select(sql))
     
