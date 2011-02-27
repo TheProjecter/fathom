@@ -29,7 +29,7 @@ class Database(object):
         if self.inspector is not None:
             self._views = self.inspector.get_views()
         else:
-            self._views = []
+            self._views = {}
     
     def _get_views(self):
         if self._views is None:
@@ -54,18 +54,15 @@ class Database(object):
         self.stored_procedures[name] = StoredProcedure(name)
         return self.stored_procedures[name]
 
+class WithColumns(object):
 
-class Table(object):
-    
-    def __init__(self, name, inspector=None):
-        super(Table, self).__init__()
-        self.name = name
+    def __init__(self):
+        super(WithColumns, self).__init__()
         self._columns = None
-        self.inspector = inspector
-        
+
     def _get_columns(self):
         if self._columns is None:
-            self.inspector.fill_table(self)
+            self.inspector.build_columns(self)
         return self._columns
     
     def _set_columns(self, columns):
@@ -74,11 +71,20 @@ class Table(object):
     columns = property(_get_columns, _set_columns)
 
 
-class View(object):
+class Table(WithColumns):
     
-    def __init__(self, name):
+    def __init__(self, name, inspector=None):
+        super(Table, self).__init__()
+        self.name = name
+        self.inspector = inspector
+        
+
+class View(WithColumns):
+    
+    def __init__(self, name, inspector=None):
         super(View, self).__init__()
         self.name = name
+        self.inspector = inspector
 
 
 class Index(object):
@@ -86,8 +92,8 @@ class Index(object):
     def __init__(self, name):
         super(Index, self).__init__()
         self.name = name
-        
 
+        
 class StoredProcedure(object):
     
     def __init__(self, name):
@@ -98,7 +104,8 @@ class StoredProcedure(object):
 
 class Column(object):
     
-    def __init__(self, name, type):
+    def __init__(self, name, type, not_null=False):
         super(Column, self).__init__()
         self.name = name
         self.type = type
+        self.not_null = not_null
