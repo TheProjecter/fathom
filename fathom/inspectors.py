@@ -22,14 +22,15 @@ class DatabaseInspector:
         
     def get_views(self):
         '''Return names of all views in the database.'''
-        return [View(row[0]) for row in self._select(self._VIEW_NAMES_SQL)]
+        return dict((row[0], View(row[0], inspector=self)) 
+                    for row in self._select(self._VIEW_NAMES_SQL))
                                 
     def get_indices(self):
         '''Return names of all indices in the database.'''
         return [Index(row[0]) for row in self._select(self._INDEX_NAMES_SQL)]
         
     @abstractmethod
-    def fill_table(self, table):
+    def build_columns(self, schema_object):
         pass
         
     @abstractmethod
@@ -64,8 +65,6 @@ class SqliteInspector(DatabaseInspector):
         DatabaseInspector.__init__(self, *db_params)
         import sqlite3
         self._api = sqlite3
-        from sqlite import parse_table
-        self.parse_table = parse_table
 
     def supports_stored_procedures(self):
         return False
@@ -73,10 +72,15 @@ class SqliteInspector(DatabaseInspector):
     def get_stored_procedures(self):
         return []
         
-    def fill_table(self, table):
-        sql = self._COLUMN_NAMES_SQL % table.name
-        table.columns = dict((row[0], Column(row[1], row[2])) 
-                             for row in self._select(sql))
+    def build_columns(self, schema_object):
+        sql = self._COLUMN_NAMES_SQL % schema_object.name
+        schema_object.columns = dict((row[1], self.prepare_column(row)) 
+                                     for row in self._select(sql))
+                      
+    @staticmethod
+    def prepare_column(row):
+        not_null = bool(row[3])
+        return Column(row[1], row[2], not_null=not_null)
 
 
 class PostgresInspector(DatabaseInspector):
@@ -92,7 +96,7 @@ FROM pg_views
 WHERE schemaname = 'public'"""
                           
     _COLUMN_NAMES_SQL = """
-SELECT column_name, data_type, character_maximum_length
+SELECT column_name, data_type, character_maximum_length, is_nullable
 FROM information_schema.columns
 WHERE table_name = '%s'"""
                            
@@ -109,10 +113,10 @@ WHERE schemaname = 'public'"""
     def get_stored_procedures(self):
         return []
 
-    def fill_table(self, table):
-        sql = self._COLUMN_NAMES_SQL % table.name
-        table.columns = dict((row[0], self.prepare_column(row)) 
-                             for row in self._select(sql))
+    def build_columns(self, schema_object):
+        sql = self._COLUMN_NAMES_SQL % schema_object.name
+        schema_object.columns = dict((row[0], self.prepare_column(row)) 
+                                     for row in self._select(sql))
     
     @staticmethod                         
     def prepare_column(row):
@@ -122,4 +126,5 @@ WHERE schemaname = 'public'"""
             data_type = 'varchar(%s)' % row[2]
         else:
             data_type = row[1]
-        return Column(row[0], data_type)
+        not_null = (row[3] == 'NO')
+        return Column(row[0], data_type, not_null=not_null)
