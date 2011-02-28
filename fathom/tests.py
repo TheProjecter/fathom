@@ -49,6 +49,20 @@ class AbstractDatabaseTestCase:
         Class._drop_operation('VIEW', Class.VIEWS)
         Class._drop_operation('TABLE', Class.TABLES)
 
+    # new assertions
+    
+    def assertColumns(self, table, values):
+        for name, type, not_null in values:
+            column = table.columns[name]
+            if column.type != type:
+                msg = "Table: %s, column: %s, %s != %s" % \
+                      (table.name, column.name, column.type, type)
+                raise AssertionError(msg)
+            if column.not_null != not_null:
+                msg = "Table: %s, column: %s, %s != %s" % \
+                      (table.name, column.name, column.not_null, not_null)
+                raise AssertionError(msg)
+
     # tests
 
     def test_table_names(self):
@@ -173,16 +187,28 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
             "codename" varchar(100) NOT NULL,
             UNIQUE ("content_type_id", "codename")
         )'''
-    column_names=('id', 'action_time', 'user_id', 'content_type_id', 
-                  'object_id', 'object_repr', 'action_flag', 
-                  'change_message'),
 
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
         self.db = get_sqlite3_database(self.PATH)
 
-    # sqlite specific methods
+    # sqlite specific tests
     
+    def test_sqlite_table_django_admin_log(self):
+        table = self.db.tables['django_admin_log']
+        column_names = ('id', 'action_time', 'user_id', 'content_type_id', 
+                        'object_id', 'object_repr', 'action_flag', 
+                        'change_message')
+        self.assertEqual(set(table.columns.keys()), set(column_names))
+        values = (('id', 'integer', True), ('action_time', 'datetime', True),
+                  ('user_id', 'integer', True), 
+                  ('content_type_id', 'integer', False),
+                  ('object_id', 'text', False), 
+                  ('object_repr', 'varchar(200)', True),
+                  ('action_flag', 'smallint unsigned', True),
+                  ('change_message', 'text', True))
+        self.assertColumns(table, values)
+
     def test_sqlite_table_auth_permission(self):
         table = self.db.tables['auth_permission']
         column_names = 'id', 'name', 'content_type_id', 'codename'
@@ -190,10 +216,7 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
         values = (('id', 'integer', True), ('name', 'varchar(50)', True),
                   ('content_type_id', 'integer', True),
                   ('codename', 'varchar(100)', True))
-        for name, type, not_null in values:
-            column = table.columns[name]
-            self.assertEqual(column.type, type)
-            self.assertEqual(column.not_null, not_null)
+        self.assertColumns(table, values)
         self.assertEqual(set(table.indices.keys()), 
                          set([self.auto_index_name('auth_permission')]))
 
