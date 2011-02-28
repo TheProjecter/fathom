@@ -11,6 +11,7 @@ class Database(object):
 
         self._tables = None
         self._views = None
+        self._procedures = None
 
     def _refresh_tables(self):
         if self.inspector is not None:
@@ -37,6 +38,19 @@ class Database(object):
         return self._views
         
     views = property(_get_views)
+    
+    def _refresh_procedures(self):
+        if self.inspector is not None:
+            self._procedures = self.inspector.get_procedures()
+        else:
+            self.procedures = {}
+    
+    def _get_procedures(self):
+        if self._procedures is None:
+            self._refresh_procedures()
+        return self._procedures
+    
+    procedures = property(_get_procedures)
         
     def add_table(self, name):
         self.tables[name] = Table(name)
@@ -105,10 +119,10 @@ class Index(object):
         self.name = name
 
         
-class StoredProcedure(object):
+class Procedure(object):
     
     def __init__(self, name):
-        super(Table, self).__init__()
+        super(Procedure, self).__init__()
         self.name = name
         self.parametres = dict()
         
