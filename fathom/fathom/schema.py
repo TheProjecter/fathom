@@ -121,11 +121,30 @@ class Index(object):
         
 class Procedure(object):
     
-    def __init__(self, name):
+    def __init__(self, name, inspector=None):
         super(Procedure, self).__init__()
         self.name = name
-        self.parametres = dict()
+        self._parametres = None
+        self.inspector = inspector
         
+    def _get_parametres(self):
+        if self._parametres is None:
+            self.inspector.build_procedure(self)
+        return self._parametres
+        
+    def _set_parametres(self, parametres):
+        self._parametres = parametres
+        
+    parametres = property(_get_parametres, _set_parametres)
+
+
+class Argument(object):
+    
+    def __init__(self, name, type):
+        super(Argument, self).__init__()
+        self.name = name
+        self.type = type
+
 
 class Column(object):
     

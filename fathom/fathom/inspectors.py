@@ -129,6 +129,12 @@ SELECT proname
 FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
 WHERE pg_language.lanname = 'plpgsql';    
 """
+
+    _PROCEDURE_ARGUMENTS_SQL = """
+SELECT proargnames, proargtypes
+FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
+WHERE pg_language.lanname = 'plpgsql' AND proname = %s;
+"""
     
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -144,6 +150,10 @@ WHERE pg_language.lanname = 'plpgsql';
         sql = self._TABLE_INDICE_NAMES_SQL % table.name
         table.indices = dict((row[0], Index(row[0])) 
                              for row in self._select(sql))
+                             
+    def build_procedure(self, procedure):
+        sql = self._PROCEDURE_ARGUMENTS_SQL % procedure.name
+        procedure.arguments = dict((row[0], Argument(row[0])))
     
     @staticmethod                         
     def prepare_column(row):

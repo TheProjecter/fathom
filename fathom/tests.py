@@ -123,7 +123,7 @@ class AbstractDatabaseTestCase:
             for name in names:
                 try:
                     cursor.execute('DROP %s %s' % (type, name));
-                except Class.DATABASE_ERRORS:
+                except Class.DATABASE_ERRORS as e:
                     pass # maybe it was not created, we need to try drop other
         Class._run_using_cursor(function)
 
@@ -149,7 +149,6 @@ $$ LANGUAGE plpgsql;'''
             Class._add_operation(Class.VIEWS.values())
             Class._add_operation(Class.PROCEDURES.values())
         except Class.DATABASE_ERRORS as e:
-            print e
             Class.tearDownClass()
             raise
             
@@ -159,9 +158,19 @@ $$ LANGUAGE plpgsql;'''
 
     @classmethod
     def tearDownClass(Class):
-        Class._drop_operation('FUNCTION', Class.PROCEDURES)
+        Class._drop_procedures();
         Class._drop_operation('VIEW', Class.VIEWS)
         Class._drop_operation('TABLE', Class.TABLES)
+        
+    @classmethod
+    def _drop_procedures(Class):
+        def function(Class, cursor):
+            for name in ('fib(integer)',):
+                try:
+                    cursor.execute('DROP FUNCTION %s' % name);
+                except Class.DATABASE_ERRORS as e:
+                    pass # maybe it was not created, we need to try drop other
+        Class._run_using_cursor(function)        
             
 
 @skipUnless(TEST_POSTGRES, 'Failed to import psycopg2 module.')
