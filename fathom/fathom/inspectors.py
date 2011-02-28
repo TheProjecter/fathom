@@ -3,7 +3,7 @@
 from abc import ABCMeta, abstractmethod
 
 from errors import FathomError
-from schema import Database, Table, Column, View, Index
+from schema import Database, Table, Column, View, Index, Procedure
 
 class DatabaseInspector:
     
@@ -27,7 +27,13 @@ class DatabaseInspector:
                                 
     def get_indices(self):
         '''Return names of all indices in the database.'''
-        return [Index(row[0]) for row in self._select(self._INDEX_NAMES_SQL)]
+        return dict((row[0], Index(row[0])) 
+                    for row in self._select(self._INDEX_NAMES_SQL))
+        
+    def get_procedures(self):
+        '''Return names of all stored procedures in the database.'''
+        return dict((row[0], Procedure(row[0]))
+                    for row in self._select(self._PROCEDURE_NAMES_SQL))
         
     @abstractmethod
     def build_columns(self, schema_object):
@@ -36,11 +42,7 @@ class DatabaseInspector:
     @abstractmethod
     def build_indices(self, table):
         pass
-        
-    @abstractmethod
-    def get_stored_procedures(self):
-        pass
-                
+                        
     def supports_stored_procedures(self):
         return True
                     
@@ -75,7 +77,7 @@ class SqliteInspector(DatabaseInspector):
     def supports_stored_procedures(self):
         return False
 
-    def get_stored_procedures(self):
+    def get_procedures(self):
         return []
         
     def build_columns(self, schema_object):
@@ -121,14 +123,17 @@ SELECT indexname
 FROM pg_indexes 
 WHERE schemaname='public' AND tablename='%s';
 """
+
+    _PROCEDURE_NAMES_SQL = """
+SELECT proname 
+FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
+WHERE pg_language.lanname = 'plpgsql';    
+"""
     
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
         import psycopg2
         self._api = psycopg2
-
-    def get_stored_procedures(self):
-        return []
 
     def build_columns(self, schema_object):
         sql = self._COLUMN_NAMES_SQL % schema_object.name

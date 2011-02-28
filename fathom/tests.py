@@ -152,6 +152,10 @@ $$ LANGUAGE plpgsql;'''
             print e
             Class.tearDownClass()
             raise
+            
+    def test_table_names(self):
+        self.assertEqual(set([procedure.name for procedure in self.db.procedures.values()]), 
+                         set(self.PROCEDURES.keys()))            
 
     @classmethod
     def tearDownClass(Class):
