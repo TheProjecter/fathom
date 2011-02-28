@@ -129,10 +129,14 @@ class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
         TestCase.__init__(self, *args, **kwargs)
         args = self.DBNAME, self.USER
         self.db = get_postgresql_database('dbname=%s user=%s' % args)
+    
+    # postgresql specific tests
         
     def test_table_empty(self):
         table = self.db.tables['empty']
         self.assertEqual(set(table.columns.keys()), set())
+    
+    # postgresql internal methods required for testing
         
     def auto_index_name(self, table_name):
         return '%s_column_key' % table_name
@@ -169,19 +173,31 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
             "codename" varchar(100) NOT NULL,
             UNIQUE ("content_type_id", "codename")
         )'''
-
-    column_names=('id', 'action_time', 'user_id', 'content_type_id', 'object_id',
-              'object_repr', 'action_flag', 'change_message'),
-    column_types=('integer', 'datetime', 'integer', 'integer', 'text', 
-              'varchar(200)', 'smallint unsigned', 'text')
-
-
-    column_names=('id', 'name', 'content_type_id', 'codename'),
-    column_types=('integer', 'varchar(50)', 'integer', 'varchar(100)')
+    column_names=('id', 'action_time', 'user_id', 'content_type_id', 
+                  'object_id', 'object_repr', 'action_flag', 
+                  'change_message'),
 
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
         self.db = get_sqlite3_database(self.PATH)
+
+    # sqlite specific methods
+    
+    def test_sqlite_table_auth_permission(self):
+        table = self.db.tables['auth_permission']
+        column_names = 'id', 'name', 'content_type_id', 'codename'
+        self.assertEqual(set(table.columns.keys()), set(column_names))
+        values = (('id', 'integer', True), ('name', 'varchar(50)', True),
+                  ('content_type_id', 'integer', True),
+                  ('codename', 'varchar(100)', True))
+        for name, type, not_null in values:
+            column = table.columns[name]
+            self.assertEqual(column.type, type)
+            self.assertEqual(column.not_null, not_null)
+        self.assertEqual(set(table.indices.keys()), 
+                         set([self.auto_index_name('auth_permission')]))
+
+    # sqlite internal methods required for testing
 
     def auto_index_name(self, table_name):
         return 'sqlite_autoindex_%s_1' % table_name
