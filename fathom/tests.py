@@ -40,7 +40,6 @@ class AbstractDatabaseTestCase:
             Class._add_operation(Class.TABLES.values())
             Class._add_operation(Class.VIEWS.values())
         except Class.DATABASE_ERRORS as e:
-            print e
             Class.tearDownClass()
             raise
         
@@ -129,8 +128,40 @@ class AbstractDatabaseTestCase:
         Class._run_using_cursor(function)
 
 
+class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
+    
+    PROCEDURES = {
+        'fib': '''
+CREATE OR REPLACE FUNCTION fib (fib_for integer) RETURNS integer AS $$
+    BEGIN
+        IF fib_for < 2 THEN
+            RETURN fib_for;
+        END IF;
+        RETURN fib(fib_for - 2) + fib(fib_for - 1);
+    END;
+$$ LANGUAGE plpgsql;'''
+    }
+
+    @classmethod
+    def setUpClass(Class):
+        try:
+            Class._add_operation(Class.TABLES.values())
+            Class._add_operation(Class.VIEWS.values())
+            Class._add_operation(Class.PROCEDURES.values())
+        except Class.DATABASE_ERRORS as e:
+            print e
+            Class.tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(Class):
+        Class._drop_operation('FUNCTION', Class.PROCEDURES)
+        Class._drop_operation('VIEW', Class.VIEWS)
+        Class._drop_operation('TABLE', Class.TABLES)
+            
+
 @skipUnless(TEST_POSTGRES, 'Failed to import psycopg2 module.')
-class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
+class PostgresTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     DBNAME = 'fathom'
     USER = 'fathom'
