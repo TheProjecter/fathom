@@ -67,6 +67,9 @@ class Database(object):
     def add_stored_procedure(self, name):
         self.stored_procedures[name] = StoredProcedure(name)
         return self.stored_procedures[name]
+        
+    def supports_stored_procedures(self):
+        return self.inspector.supports_stored_procedures()
 
 class WithColumns(object):
 
