@@ -30,10 +30,10 @@ class DatabaseInspector:
         return dict((row[0], Index(row[0])) 
                     for row in self._select(self._INDEX_NAMES_SQL))
         
-    def get_procedures(self):
+    @abstractmethod
+    def get_procedures(self): 
         '''Return names of all stored procedures in the database.'''
-        return dict((row[0], Procedure(row[0]))
-                    for row in self._select(self._PROCEDURE_NAMES_SQL))
+        pass
         
     @abstractmethod
     def build_columns(self, schema_object): pass
@@ -123,7 +123,7 @@ WHERE schemaname='public' AND tablename='%s';
 """
 
     _PROCEDURE_NAMES_SQL = """
-SELECT proname 
+SELECT proname, proargtypes
 FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
 WHERE pg_language.lanname = 'plpgsql';    
 """
@@ -132,6 +132,12 @@ WHERE pg_language.lanname = 'plpgsql';
 SELECT proargnames, proargtypes
 FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
 WHERE pg_language.lanname = 'plpgsql' AND proname = %s;
+"""
+
+    _TYPE_SQL = """
+SELECT typname
+FROM pg_type
+WHERE oid = %s;
 """
     
     def __init__(self, *db_params):
@@ -152,7 +158,11 @@ WHERE pg_language.lanname = 'plpgsql' AND proname = %s;
     def build_procedure(self, procedure):
         sql = self._PROCEDURE_ARGUMENTS_SQL % procedure.name
         procedure.arguments = dict((row[0], Argument(row[0])))
-    
+
+    def get_procedures(self):
+        return dict(self.prepare_procedure(row)
+                    for row in self._select(self._PROCEDURE_NAMES_SQL))
+            
     @staticmethod                         
     def prepare_column(row):
         # because PostgreSQL keeps varchar type as character varying, we need
@@ -163,3 +173,13 @@ WHERE pg_language.lanname = 'plpgsql' AND proname = %s;
             data_type = row[1]
         not_null = (row[3] == 'NO')
         return Column(row[0], data_type, not_null=not_null)
+        
+    def prepare_procedure(self, row):
+        # because PostgreSQL identifies procedure by <proc_name>(<proc_args>)
+        # we need to name it the same way; also table with procedure names
+        # use oids rather than actual type names, so we need decipher them
+        types = row[1].split(' ')
+        row_list = [self._select(self._TYPE_SQL % type) for type in types]
+        type_string = ', '.join(row[0][0] for row in row_list)
+        name = '%s(%s)' % (row[0], type_string)
+        return name, Procedure(name)
