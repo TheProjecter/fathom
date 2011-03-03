@@ -36,12 +36,10 @@ class DatabaseInspector:
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
         
     @abstractmethod
-    def build_columns(self, schema_object):
-        pass
+    def build_columns(self, schema_object): pass
         
     @abstractmethod
-    def build_indices(self, table):
-        pass
+    def build_indices(self, table): pass
                         
     def supports_stored_procedures(self):
         return True
