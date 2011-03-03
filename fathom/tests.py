@@ -71,9 +71,9 @@ class AbstractDatabaseTestCase:
     def assertArguments(self, procedure, values):
         for name, type in values:
             argument = procedure.arguments[name]
-            if column.type != type:
+            if argument.type != type:
                 msg = "Procedure: %s, argument: %s, %s != %s" % \
-                      (procedure.name, argument.name, arguemnt.type, type)
+                      (procedure.name, argument.name, argument.type, type)
                 raise AssertionError(msg)
 
     # tests

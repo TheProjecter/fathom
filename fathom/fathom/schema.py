@@ -124,21 +124,22 @@ class Index(object):
         
 class Procedure(object):
     
-    def __init__(self, name, inspector=None):
+    def __init__(self, name, base_name, inspector=None):
         super(Procedure, self).__init__()
         self.name = name
-        self._parametres = None
+        self.base_name = base_name
+        self._arguments = None
         self.inspector = inspector
         
-    def _get_parametres(self):
-        if self._parametres is None:
+    def _get_arguments(self):
+        if self._arguments is None:
             self.inspector.build_procedure(self)
-        return self._parametres
+        return self._arguments
         
-    def _set_parametres(self, parametres):
-        self._parametres = parametres
+    def _set_arguments(self, arguments):
+        self._arguments = arguments
         
-    parametres = property(_get_parametres, _set_parametres)
+    arguments = property(_get_arguments, _set_arguments)
 
 
 class Argument(object):
