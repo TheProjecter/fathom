@@ -75,7 +75,6 @@ class AbstractDatabaseTestCase:
                 msg = "Procedure: %s, argument: %s, %s != %s" % \
                       (procedure.name, argument.name, arguemnt.type, type)
                 raise AssertionError(msg)
-            
 
     # tests
 
