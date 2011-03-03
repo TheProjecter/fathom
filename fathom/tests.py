@@ -67,6 +67,15 @@ class AbstractDatabaseTestCase:
                 msg = "Table: %s, column: %s, %s != %s" % \
                       (table.name, column.name, column.not_null, not_null)
                 raise AssertionError(msg)
+                
+    def assertArguments(self, procedure, values):
+        for name, type in values:
+            argument = procedure.arguments[name]
+            if column.type != type:
+                msg = "Procedure: %s, argument: %s, %s != %s" % \
+                      (procedure.name, argument.name, arguemnt.type, type)
+                raise AssertionError(msg)
+            
 
     # tests
 
@@ -140,7 +149,7 @@ class AbstractDatabaseTestCase:
 class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
     
     PROCEDURES = {
-        'fib': '''
+        'fib(int4)': '''
 CREATE OR REPLACE FUNCTION fib (fib_for integer) RETURNS integer AS $$
     BEGIN
         IF fib_for < 2 THEN
@@ -162,16 +171,24 @@ $$ LANGUAGE plpgsql;'''
             Class.tearDownClass()
             raise
             
-    def test_table_names(self):
-        self.assertEqual(set([procedure.name for procedure in self.db.procedures.values()]), 
-                         set(self.PROCEDURES.keys()))            
-
     @classmethod
     def tearDownClass(Class):
         Class._drop_operation('INDEX', Class.INDICES)
         Class._drop_procedures();
         Class._drop_operation('VIEW', Class.VIEWS)
         Class._drop_operation('TABLE', Class.TABLES)
+        
+    # tests
+    
+    def test_procedure_names(self):
+        self.assertEqual(set([procedure.name for procedure in self.db.procedures.values()]), 
+                         set(self.PROCEDURES.keys()))
+                         
+    def test_fib_integer(self):
+        procedure = self.db.procedures['fib(int4)']
+        self.assertArguments(procedure, [('fib_for', 'int4')])
+        
+    # protected:
         
     @classmethod
     def _drop_procedures(Class):
