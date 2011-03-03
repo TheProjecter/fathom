@@ -3,7 +3,7 @@
 from abc import ABCMeta, abstractmethod
 
 from errors import FathomError
-from schema import Database, Table, Column, View, Index, Procedure
+from schema import (Database, Table, Column, View, Index, Procedure, Argument)
 
 class DatabaseInspector:
     
@@ -131,7 +131,7 @@ WHERE pg_language.lanname = 'plpgsql';
     _PROCEDURE_ARGUMENTS_SQL = """
 SELECT proargnames, proargtypes
 FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
-WHERE pg_language.lanname = 'plpgsql' AND proname = %s;
+WHERE pg_language.lanname = 'plpgsql' AND proname = '%s';
 """
 
     _TYPE_SQL = """
@@ -156,8 +156,12 @@ WHERE oid = %s;
                              for row in self._select(sql))
                              
     def build_procedure(self, procedure):
-        sql = self._PROCEDURE_ARGUMENTS_SQL % procedure.name
-        procedure.arguments = dict((row[0], Argument(row[0])))
+        sql = self._PROCEDURE_ARGUMENTS_SQL % procedure.base_name
+        result = self._select(sql)[0]
+        names, oids = result[0], result[1].split(' ')
+        types = self.types_from_oids(oids)
+        procedure.arguments = dict((name, Argument(name, type)) 
+                                   for name, type in zip(result[0], types))
 
     def get_procedures(self):
         return dict(self.prepare_procedure(row)
@@ -178,8 +182,10 @@ WHERE oid = %s;
         # because PostgreSQL identifies procedure by <proc_name>(<proc_args>)
         # we need to name it the same way; also table with procedure names
         # use oids rather than actual type names, so we need decipher them
-        types = row[1].split(' ')
-        row_list = [self._select(self._TYPE_SQL % type) for type in types]
-        type_string = ', '.join(row[0][0] for row in row_list)
+        oids = row[1].split(' ')
+        type_string = ', '.join(type for type in self.types_from_oids(oids))
         name = '%s(%s)' % (row[0], type_string)
-        return name, Procedure(name)
+        return name, Procedure(name, base_name=row[0], inspector=self)
+        
+    def types_from_oids(self, oids):
+        return [self._select(self._TYPE_SQL % oid)[0][0] for oid in oids]
