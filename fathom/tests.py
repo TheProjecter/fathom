@@ -90,6 +90,9 @@ class AbstractDatabaseTestCase:
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
         self.assertEqual(set(view.columns.keys()), set(['column']))
+
+    def test_supports_procedures(self):
+        self.assertTrue(self.db.supports_stored_procedures())
         
     @abstractmethod
     def auto_index_name(self, table_name):
@@ -189,7 +192,7 @@ class PostgresTestCase(DatabaseWithProceduresTestCase, TestCase):
         self.db = get_postgresql_database('dbname=%s user=%s' % args)
     
     # postgresql specific tests
-        
+            
     def test_table_empty(self):
         table = self.db.tables['empty']
         self.assertEqual(set(table.columns.keys()), set())
@@ -237,6 +240,9 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
         self.db = get_sqlite3_database(self.PATH)
 
     # sqlite specific tests
+
+    def test_supports_procedures(self):
+        self.assertFalse(self.db.supports_stored_procedures())
     
     def test_sqlite_table_django_admin_log(self):
         table = self.db.tables['django_admin_log']
