@@ -33,18 +33,24 @@ class AbstractDatabaseTestCase:
     VIEWS = {
         'one_column_view': '''CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
     }
+    
+    INDICES = {
+        'one_column_index': '''CREATE INDEX one_column_index ON one_column("column")'''
+    }
 
     @classmethod
     def setUpClass(Class):
         try:
             Class._add_operation(Class.TABLES.values())
             Class._add_operation(Class.VIEWS.values())
+            Class._add_operation(Class.INDICES.values())
         except Class.DATABASE_ERRORS as e:
             Class.tearDownClass()
             raise
         
     @classmethod
     def tearDownClass(Class):
+        Class._drop_operation('INDEX', Class.INDICES)
         Class._drop_operation('VIEW', Class.VIEWS)
         Class._drop_operation('TABLE', Class.TABLES)
 
@@ -77,7 +83,7 @@ class AbstractDatabaseTestCase:
         self.assertEqual(set(table.columns.keys()), set(['column']))
         self.assertEqual(table.columns['column'].type, 'varchar(800)')
         self.assertEqual(table.columns['column'].not_null, False)
-        self.assertEqual(set(table.indices.keys()), set())
+        self.assertEqual(set(table.indices.keys()), set(['one_column_index']))
         
     def test_table_one_unique_column(self):
         table = self.db.tables['one_unique_column']
@@ -151,6 +157,7 @@ $$ LANGUAGE plpgsql;'''
             Class._add_operation(Class.TABLES.values())
             Class._add_operation(Class.VIEWS.values())
             Class._add_operation(Class.PROCEDURES.values())
+            Class._add_operation(Class.INDICES.values())
         except Class.DATABASE_ERRORS as e:
             Class.tearDownClass()
             raise
@@ -161,6 +168,7 @@ $$ LANGUAGE plpgsql;'''
 
     @classmethod
     def tearDownClass(Class):
+        Class._drop_operation('INDEX', Class.INDICES)
         Class._drop_procedures();
         Class._drop_operation('VIEW', Class.VIEWS)
         Class._drop_operation('TABLE', Class.TABLES)
