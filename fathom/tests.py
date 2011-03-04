@@ -156,6 +156,15 @@ CREATE OR REPLACE FUNCTION fib (fib_for integer) RETURNS integer AS $$
         END IF;
         RETURN fib(fib_for - 2) + fib(fib_for - 1);
     END;
+$$ LANGUAGE plpgsql;''',
+        'fib(int2)': '''
+CREATE OR REPLACE FUNCTION fib (fib_for int2) RETURNS integer AS $$
+    BEGIN
+        IF fib_for < 2 THEN
+            RETURN fib_for;
+        END IF;
+        RETURN fib(fib_for - 2) + fib(fib_for - 1);
+    END;
 $$ LANGUAGE plpgsql;'''
     }
 
@@ -180,6 +189,8 @@ $$ LANGUAGE plpgsql;'''
     # tests
     
     def test_procedure_names(self):
+        self.assertEqual(set([key for key in self.db.procedures.keys()]), 
+                         set(self.PROCEDURES.keys()))
         self.assertEqual(set([procedure.name for procedure in self.db.procedures.values()]), 
                          set(self.PROCEDURES.keys()))
                          
