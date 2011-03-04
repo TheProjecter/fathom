@@ -124,12 +124,26 @@ class Index(object):
         
 class Procedure(object):
     
-    def __init__(self, name, base_name, inspector=None):
+    def __init__(self, name, inspector=None):
         super(Procedure, self).__init__()
-        self.name = name
-        self.base_name = base_name
+        self._name = name
         self._arguments = None
         self.inspector = inspector
+        
+    def _get_name(self):
+        return '%s(%s)' % (self._name, ', '.join(self.get_argument_types()))
+        
+    name = property(_get_name)
+    
+    def get_base_name(self):
+        return self._name
+        
+    def get_argument_types(self):
+        types = []
+        for argument in self.arguments.values():
+            type = argument.type
+            types.append('varchar' if type.startswith('varchar') else type)
+        return types
         
     def _get_arguments(self):
         if self._arguments is None:

@@ -156,7 +156,7 @@ WHERE oid = %s;
                              for row in self._select(sql))
                              
     def build_procedure(self, procedure):
-        sql = self._PROCEDURE_ARGUMENTS_SQL % procedure.base_name
+        sql = self._PROCEDURE_ARGUMENTS_SQL % procedure.get_base_name()
         result = self._select(sql)[0]
         names, oids = result[0], result[1].split(' ')
         types = self.types_from_oids(oids)
@@ -185,7 +185,7 @@ WHERE oid = %s;
         oids = row[1].split(' ')
         type_string = ', '.join(type for type in self.types_from_oids(oids))
         name = '%s(%s)' % (row[0], type_string)
-        return name, Procedure(name, base_name=row[0], inspector=self)
+        return name, Procedure(row[0], inspector=self)
         
     def types_from_oids(self, oids):
         return [self._select(self._TYPE_SQL % oid)[0][0] for oid in oids]
