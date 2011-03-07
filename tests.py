@@ -138,6 +138,7 @@ class AbstractDatabaseTestCase:
     def _add_operation(Class, sqls):
         def function(Class, cursor):
             for sql in sqls:
+                sql = Class.substitute_quote_char(sql)
                 cursor.execute(sql);
         Class._run_using_cursor(function)
         
@@ -150,6 +151,10 @@ class AbstractDatabaseTestCase:
                 except Class.DATABASE_ERRORS as e:
                     pass # maybe it was not created, we need to try drop other
         Class._run_using_cursor(function)
+        
+    @staticmethod
+    def substitute_quote_char(string):
+        return string
 
 
 class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
@@ -270,6 +275,10 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     @classmethod
     def _get_connection(Class):
         return MySQLdb.connect(user=Class.USER, db=Class.DBNAME)
+
+    @staticmethod
+    def substitute_quote_char(string):
+        return string.replace('"', '`')
 
 
 @skipUnless(TEST_SQLITE, 'Failed to import sqlite3 module.')
