@@ -12,8 +12,9 @@ class DatabaseInspector:
     
     __metaclass__ = ABCMeta
     
-    def __init__(self, *db_params):
-        self._db_params = db_params
+    def __init__(self, *args, **kwargs):
+        self._args = args
+        self._kwargs = kwargs
         
     def get_tables(self):
         '''Return names of all tables in the database.'''
@@ -45,7 +46,7 @@ class DatabaseInspector:
         return True
                     
     def _select(self, sql):
-        connection = self._api.connect(*self._db_params)
+        connection = self._api.connect(*self._args, **self._kwargs)
         cursor = connection.cursor()
         cursor.execute(sql)
         rows = list(cursor)
@@ -193,3 +194,20 @@ WHERE oid = %s;
         
     def types_from_oids(self, oids):
         return [self._select(self._TYPE_SQL % oid)[0][0] for oid in oids]
+
+
+class MySqlInspector(DatabaseInspector):
+    
+    def __init__(self, *args, **kwargs):
+        DatabaseInspector.__init__(self, *args, **kwargs)
+        import MySQLdb
+        self._api = MySQLdb
+        
+    def get_procedures(self):
+        return []
+
+    def build_columns(self, schema_object): 
+        pass
+        
+    def build_indices(self, table): 
+        pass
