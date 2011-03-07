@@ -129,6 +129,9 @@ class Procedure(object):
         self._name = name
         self._arguments = None
         self.inspector = inspector
+        # this is a protected dictionary that can be used by inspectors to
+        # hold additional data required to operate on schema object
+        self._private = {}
         
     def _get_name(self):
         return '%s(%s)' % (self._name, ', '.join(self.get_argument_types()))
