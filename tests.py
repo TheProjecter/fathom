@@ -7,7 +7,8 @@ except ImportError:
     from unittest2 import TestCase, main, skipUnless
 from collections import namedtuple
 
-from fathom import get_sqlite3_database, get_postgresql_database
+from fathom import (get_sqlite3_database, get_postgresql_database, 
+                    get_mysql_database)
 
 try:
     import psycopg2
@@ -18,8 +19,14 @@ except ImportError:
 try:
     import sqlite3
     TEST_SQLITE = True
-except:
+except ImportError:
     TEST_SQLITE = False
+
+try:
+    import MySQLdb
+    TEST_MYSQL = True
+except ImportError:
+    TEST_MYSQL = False
 
 class AbstractDatabaseTestCase:
     
@@ -241,6 +248,28 @@ class PostgresTestCase(DatabaseWithProceduresTestCase, TestCase):
     def _get_connection(Class):
         args = Class.DBNAME, Class.USER
         return psycopg2.connect('dbname=%s user=%s' % args)
+
+
+@skipUnless(TEST_MYSQL, 'Failed to import MySQLDb module.')
+class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
+    
+    DBNAME = 'fathom'
+    USER = 'fathom'
+    DATABASE_ERRORS = ()
+
+    def __init__(self, *args, **kwargs):
+        TestCase.__init__(self, *args, **kwargs)
+        args = self.DBNAME, self.USER
+        self.db = get_mysql_database(user=self.USER, db=self.DBNAME)
+    
+    # postgresql internal methods required for testing
+
+    def auto_index_name(self, table_name):
+        return '%s_index' % table_name
+
+    @classmethod
+    def _get_connection(Class):
+        return MySQLdb.connect(user=Class.USER, db=Class.DBNAME)
 
 
 @skipUnless(TEST_SQLITE, 'Failed to import sqlite3 module.')
