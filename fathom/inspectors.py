@@ -131,7 +131,7 @@ WHERE pg_language.lanname = 'plpgsql';
     _PROCEDURE_ARGUMENTS_SQL = """
 SELECT proargnames, proargtypes
 FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
-WHERE pg_language.lanname = 'plpgsql' AND proname = '%s';
+WHERE pg_language.lanname = 'plpgsql' AND proname = '%s' AND proargtypes='%s';
 """
 
     _TYPE_SQL = """
@@ -156,7 +156,9 @@ WHERE oid = %s;
                              for row in self._select(sql))
                              
     def build_procedure(self, procedure):
-        sql = self._PROCEDURE_ARGUMENTS_SQL % procedure.get_base_name()
+        arg_type_oids = procedure._private['arg_type_oids']
+        sql = self._PROCEDURE_ARGUMENTS_SQL % (procedure.get_base_name(),
+                                               arg_type_oids)
         result = self._select(sql)[0]
         names, oids = result[0], result[1].split(' ')
         types = self.types_from_oids(oids)
@@ -179,13 +181,15 @@ WHERE oid = %s;
         return Column(row[0], data_type, not_null=not_null)
         
     def prepare_procedure(self, row):
+        procedure = Procedure(row[0], inspector=self)
         # because PostgreSQL identifies procedure by <proc_name>(<proc_args>)
         # we need to name it the same way; also table with procedure names
         # use oids rather than actual type names, so we need decipher them
+        procedure._private['arg_type_oids'] = row[1]
         oids = row[1].split(' ')
         type_string = ', '.join(type for type in self.types_from_oids(oids))
         name = '%s(%s)' % (row[0], type_string)
-        return name, Procedure(row[0], inspector=self)
+        return name, procedure
         
     def types_from_oids(self, oids):
         return [self._select(self._TYPE_SQL % oid)[0][0] for oid in oids]
