@@ -1,2 +1,0 @@
-class InspectionError(Exception):
-    pass
