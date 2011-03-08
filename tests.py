@@ -186,11 +186,7 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
                          set(self.PROCEDURES.keys()))
         self.assertEqual(set([procedure.name for procedure in self.db.procedures.values()]), 
                          set(self.PROCEDURES.keys()))
-                         
-    def test_fib_integer(self):
-        procedure = self.db.procedures['fib(int4)']
-        self.assertArguments(procedure, [('fib_for', 'int4')])
-        
+
     # protected:
         
     @classmethod
@@ -244,6 +240,10 @@ $$ LANGUAGE plpgsql;'''
     def test_table_empty(self):
         table = self.db.tables['empty']
         self.assertEqual(set(table.columns.keys()), set())
+
+    def test_fib_integer(self):
+        procedure = self.db.procedures['fib(int4)']
+        self.assertArguments(procedure, [('fib_for', 'int4')])
     
     # postgresql internal methods required for testing
         

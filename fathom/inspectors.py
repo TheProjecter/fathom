@@ -197,6 +197,16 @@ WHERE oid = %s;
 
 
 class MySqlInspector(DatabaseInspector):
+
+    _TABLE_NAMES_SQL = """
+SELECT TABLE_NAME
+FROM information_schema.tables
+WHERE TABLE_TYPE = 'BASE TABLE';
+"""
+
+    _VIEW_NAMES_SQL = """
+SELECT TABLE_NAME 
+FROM information_schema.views"""
     
     def __init__(self, *args, **kwargs):
         DatabaseInspector.__init__(self, *args, **kwargs)
