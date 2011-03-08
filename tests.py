@@ -260,7 +260,7 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     DBNAME = 'fathom'
     USER = 'fathom'
-    DATABASE_ERRORS = ()
+    DATABASE_ERRORS = (MySQLdb.OperationalError, MySQLdb.ProgrammingError)
 
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
