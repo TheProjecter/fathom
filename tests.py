@@ -159,26 +159,7 @@ class AbstractDatabaseTestCase:
 
 class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
     
-    PROCEDURES = {
-        'fib(int4)': '''
-CREATE OR REPLACE FUNCTION fib (fib_for integer) RETURNS integer AS $$
-    BEGIN
-        IF fib_for < 2 THEN
-            RETURN fib_for;
-        END IF;
-        RETURN fib(fib_for - 2) + fib(fib_for - 1);
-    END;
-$$ LANGUAGE plpgsql;''',
-        'fib(int2)': '''
-CREATE OR REPLACE FUNCTION fib (fib_for int2) RETURNS integer AS $$
-    BEGIN
-        IF fib_for < 2 THEN
-            RETURN fib_for;
-        END IF;
-        RETURN fib(fib_for - 2) + fib(fib_for - 1);
-    END;
-$$ LANGUAGE plpgsql;'''
-    }
+    PROCEDURES = {}
 
     @classmethod
     def setUpClass(Class):
@@ -232,6 +213,26 @@ class PostgresTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
     TABLES['empty'] = '''CREATE TABLE empty()'''
+
+    PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
+    PROCEDURES['fib(int4)'] = '''
+CREATE OR REPLACE FUNCTION fib (fib_for integer) RETURNS integer AS $$
+    BEGIN
+        IF fib_for < 2 THEN
+            RETURN fib_for;
+        END IF;
+        RETURN fib(fib_for - 2) + fib(fib_for - 1);
+    END;
+$$ LANGUAGE plpgsql;'''
+    PROCEDURES['fib(int2)'] = '''
+CREATE OR REPLACE FUNCTION fib (fib_for int2) RETURNS integer AS $$
+    BEGIN
+        IF fib_for < 2 THEN
+            RETURN fib_for;
+        END IF;
+        RETURN fib(fib_for - 2) + fib(fib_for - 1);
+    END;
+$$ LANGUAGE plpgsql;'''
 
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
