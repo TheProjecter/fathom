@@ -192,10 +192,11 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
     @classmethod
     def _drop_procedures(Class):
         def function(Class, cursor):
-            for name in ('fib(integer)',):
+            for name in Class.PROCEDURES.keys():
                 try:
                     cursor.execute('DROP FUNCTION %s' % name);
                 except Class.DATABASE_ERRORS as e:
+                    print e
                     pass # maybe it was not created, we need to try drop other
         Class._run_using_cursor(function)        
             
@@ -262,6 +263,13 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     DBNAME = 'fathom'
     USER = 'fathom'
     DATABASE_ERRORS = (MySQLdb.OperationalError, MySQLdb.ProgrammingError)
+    
+    PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
+    PROCEDURES['foo_double'] = '''
+CREATE FUNCTION foo_double (value int4)
+    RETURNS INTEGER
+        RETURN 2 * value;
+'''
 
     def __init__(self, *args, **kwargs):
         TestCase.__init__(self, *args, **kwargs)
