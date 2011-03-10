@@ -207,6 +207,11 @@ WHERE TABLE_TYPE = 'BASE TABLE';
     _VIEW_NAMES_SQL = """
 SELECT TABLE_NAME 
 FROM information_schema.views"""
+
+    _PROCEDURE_NAMES_SQL = """
+SELECT routine_name
+FROM information_schema.routines
+"""
     
     def __init__(self, *args, **kwargs):
         DatabaseInspector.__init__(self, *args, **kwargs)
@@ -214,7 +219,8 @@ FROM information_schema.views"""
         self._api = MySQLdb
         
     def get_procedures(self):
-        return []
+        return dict((row[0], Procedure(row[0], inspector=self))
+                    for row in self._select(self._PROCEDURE_NAMES_SQL))
 
     def build_columns(self, schema_object): 
         pass
