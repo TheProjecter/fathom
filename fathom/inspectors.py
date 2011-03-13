@@ -38,9 +38,11 @@ class DatabaseInspector(metaclass=ABCMeta):
         schema_object.columns = dict((row[0], self.prepare_column(row)) 
                                      for row in self._select(sql))
 
-    @abstractmethod
-    def build_indices(self, table): pass
-                        
+    def build_indices(self, table):
+        sql = self._TABLE_INDICE_NAMES_SQL % table.name
+        table.indices = dict((row[0], Index(row[0])) 
+                             for row in self._select(sql))
+
     def supports_stored_procedures(self):
         return True
                     
@@ -144,11 +146,6 @@ WHERE oid = %s;
         DatabaseInspector.__init__(self, *db_params)
         import psycopg2
         self._api = psycopg2
-
-    def build_indices(self, table):
-        sql = self._TABLE_INDICE_NAMES_SQL % table.name
-        table.indices = dict((row[0], Index(row[0])) 
-                             for row in self._select(sql))
                              
     def build_procedure(self, procedure):
         arg_type_oids = procedure._private['arg_type_oids']
@@ -212,6 +209,12 @@ SELECT column_name, data_type, character_maximum_length, is_nullable
 FROM information_schema.columns
 WHERE table_name = '%s'
 """
+
+    _TABLE_INDICE_NAMES_SQL = """
+SELECT index_name 
+FROM information_schema.statistics
+WHERE table_name='%s';
+"""
     
     def __init__(self, *args, **kwargs):
         DatabaseInspector.__init__(self, *args, **kwargs)
@@ -230,7 +233,7 @@ WHERE table_name = '%s'
         return dict((row[0], Procedure(row[0], inspector=self))
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
         
-    def build_indices(self, table): 
+    def build_procedure(self, procedure):
         pass
 
     def prepare_column(self, row):
