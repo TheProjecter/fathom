@@ -143,7 +143,7 @@ class Procedure(object):
         
     def get_argument_types(self):
         types = []
-        for argument in self.arguments.values():
+        for argument in list(self.arguments.values()):
             type = argument.type
             types.append('varchar' if type.startswith('varchar') else type)
         return types
