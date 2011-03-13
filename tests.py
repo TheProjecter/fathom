@@ -44,6 +44,8 @@ class AbstractDatabaseTestCase:
     __metaclass__ = ABCMeta
 
     DEFAULT_INTEGER_TYPE_NAME = 'integer'
+    PRIMARY_KEY_IS_NOT_NULL = True
+    CREATES_INDEX_FOR_PRIMARY_KEY = True
     
     TABLES = {
         'one_column': '''
@@ -156,9 +158,13 @@ CREATE TABLE primary_key_only (id integer primary key)
     def test_table_primary_key_only(self):
         table = self.db.tables['primary_key_only']
         self.assertEqual(set(table.columns.keys()), set(['id']))
-        values = (('id', self.DEFAULT_INTEGER_TYPE_NAME, True),)
+        values = (('id', self.DEFAULT_INTEGER_TYPE_NAME, 
+                   self.PRIMARY_KEY_IS_NOT_NULL),)
         self.assertColumns(table, values)
-        index_names = [self.pkey_index_name('primary_key_only', 'id')]
+        if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+            index_names = [self.pkey_index_name('primary_key_only', 'id')]
+        else:
+            index_names = []
         self.assertEqual(set(table.indices.keys()), set(index_names))
         
     def test_view_one_column_view(self):
@@ -359,6 +365,9 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
     
     PATH = 'fathom.db3'
     DATABASE_ERRORS = (sqlite3.OperationalError, sqlite3.ProgrammingError)
+
+    PRIMARY_KEY_IS_NOT_NULL = False
+    CREATES_INDEX_FOR_PRIMARY_KEY = False
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
     TABLES['django_admin_log'] = '''
@@ -422,6 +431,9 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
 
     def auto_index_name(self, table_name, *columns):
         return 'sqlite_autoindex_%s_1' % table_name
+    
+    def pkey_index_name(self, table_name, *columns):
+        return self.auto_index_name(table_name, columns)
 
     @classmethod
     def _get_connection(Class):
