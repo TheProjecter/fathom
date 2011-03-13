@@ -45,6 +45,9 @@ class DatabaseInspector(metaclass=ABCMeta):
 
     def supports_stored_procedures(self):
         return True
+        
+    def supports_routine_parametres(self):
+        return True
                     
     def _select(self, sql):
         connection = self._api.connect(*self._args, **self._kwargs)
@@ -77,8 +80,11 @@ class SqliteInspector(DatabaseInspector):
     def supports_stored_procedures(self):
         return False
 
+    def supports_routine_parametres(self):
+        return False
+
     def get_procedures(self):
-        return []
+        return {}
         
     def build_columns(self, schema_object):
         sql = self._COLUMN_NAMES_SQL % schema_object.name
@@ -215,6 +221,10 @@ SELECT index_name
 FROM information_schema.statistics
 WHERE table_name='%s';
 """
+
+    _VERSION_SQL = """
+    SELECT version()
+"""
     
     def __init__(self, *args, **kwargs):
         DatabaseInspector.__init__(self, *args, **kwargs)
@@ -228,13 +238,25 @@ WHERE table_name='%s';
             except ImportError:
                 raise FathomError('Either MySQLdb or pymsql package is '
                                   'required to access MySQL database.')
+        self.set_version()
+        
+    def set_version(self):
+        try:
+            version = self._select(self._VERSION_SQL)[0][0].split('.')[0:2]
+            self.version = tuple([int(step) for step in version])
+        except Exception as e:
+            print('Warning: failed to obtain MySQL version; assuming 5.0')
+            self.version = (5, 0)
         
     def get_procedures(self):
         return dict((row[0], Procedure(row[0], inspector=self))
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
         
     def build_procedure(self, procedure):
-        pass
+        if self.supports_routine_parametres():
+            pass
+        else:
+            procedure.arguments = {}
 
     def prepare_column(self, row):
         if row[1] == 'varchar':
@@ -243,3 +265,6 @@ WHERE table_name='%s';
             data_type = row[1]
         not_null = (row[3] == 'NO')
         return Column(row[0], data_type, not_null=not_null)
+
+    def supports_routine_parametres(self):
+        return self.version >= (5, 5)
