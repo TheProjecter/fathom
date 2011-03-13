@@ -161,8 +161,9 @@ class Argument(object):
 
 class Column(object):
     
-    def __init__(self, name, type, not_null=False):
+    def __init__(self, name, type, not_null=False, default=None):
         super(Column, self).__init__()
         self.name = name
         self.type = type
         self.not_null = not_null
+        self.default = default

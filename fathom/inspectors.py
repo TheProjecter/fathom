@@ -96,10 +96,23 @@ class SqliteInspector(DatabaseInspector):
         table.indices = dict((row[1], Index(row[0]))
                              for row in self._select(sql))
         
-    @staticmethod
-    def prepare_column(row):
+    def prepare_column(self, row):
         not_null = bool(row[3])
-        return Column(row[1], row[2], not_null=not_null)
+        default = self.prepare_default(row[2], row[4]) if row[4] else None
+        return Column(row[1], row[2], not_null=not_null, default=default)
+        
+    def prepare_default(self, data_type, value):
+        if data_type in ('integer', 'smallint'):
+            try:
+                return int(value)
+            except ValueError:
+                return value
+        elif data_type in ('float',):
+            try:
+                return float(value)
+            except ValueError:
+                return value
+        return value
 
 
 class PostgresInspector(DatabaseInspector):
