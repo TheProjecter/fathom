@@ -115,8 +115,8 @@ class AbstractDatabaseTestCase:
         self.assertEqual(table.columns['column'].type, 
                          self.DEFAULT_INTEGER_TYPE_NAME)
         self.assertEqual(table.columns['column'].not_null, False)
-        self.assertEqual(set(table.indices.keys()), 
-                         set([self.auto_index_name('one_unique_column')]))
+        index_names = [self.auto_index_name('one_unique_column', 'column')]
+        self.assertEqual(set(table.indices.keys()), set(index_names))
         
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
@@ -126,7 +126,7 @@ class AbstractDatabaseTestCase:
         self.assertTrue(self.db.supports_stored_procedures())
         
     @abstractmethod
-    def auto_index_name(self, table_name):
+    def auto_index_name(self, table_name, *columns):
         pass
                          
     # protected:
@@ -256,7 +256,7 @@ $$ LANGUAGE plpgsql;'''
     
     # postgresql internal methods required for testing
         
-    def auto_index_name(self, table_name):
+    def auto_index_name(self, table_name, *columns):
         return '%s_column_key' % table_name
         
     @classmethod
@@ -288,8 +288,8 @@ CREATE FUNCTION foo_double (value int4)
     
     # postgresql internal methods required for testing
 
-    def auto_index_name(self, table_name):
-        return '%s_index' % table_name
+    def auto_index_name(self, table_name, *columns):
+        return '%s' % columns[0]
 
     @classmethod
     def _get_connection(Class):
@@ -365,7 +365,7 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
 
     # sqlite internal methods required for testing
 
-    def auto_index_name(self, table_name):
+    def auto_index_name(self, table_name, *columns):
         return 'sqlite_autoindex_%s_1' % table_name
 
     @classmethod
