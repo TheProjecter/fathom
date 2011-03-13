@@ -126,21 +126,13 @@ class Procedure(object):
     
     def __init__(self, name, inspector=None):
         super(Procedure, self).__init__()
-        self._name = name
+        self.name = name
         self._arguments = None
         self.inspector = inspector
         # this is a protected dictionary that can be used by inspectors to
         # hold additional data required to operate on schema object
         self._private = {}
-        
-    def _get_name(self):
-        return '%s(%s)' % (self._name, ', '.join(self.get_argument_types()))
-        
-    name = property(_get_name)
-    
-    def get_base_name(self):
-        return self._name
-        
+                
     def get_argument_types(self):
         types = []
         for argument in list(self.arguments.values()):
