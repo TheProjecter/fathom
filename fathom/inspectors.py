@@ -134,7 +134,8 @@ FROM pg_views
 WHERE schemaname = 'public'"""
                           
     _COLUMN_NAMES_SQL = """
-SELECT column_name, data_type, character_maximum_length, is_nullable
+SELECT column_name, data_type, character_maximum_length, is_nullable,
+       column_default
 FROM information_schema.columns
 WHERE table_name = '%s'"""
                            
@@ -186,8 +187,7 @@ WHERE oid = %s;
         return dict(self.prepare_procedure(row)
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
             
-    @staticmethod                         
-    def prepare_column(row):
+    def prepare_column(self, row):
         # because PostgreSQL keeps varchar type as character varying, we need
         # to rename this type and get also store maximum length
         if row[1] == 'character varying':
@@ -195,7 +195,8 @@ WHERE oid = %s;
         else:
             data_type = row[1]
         not_null = (row[3] == 'NO')
-        return Column(row[0], data_type, not_null=not_null)
+        default = self.prepare_default(data_type, row[4])        
+        return Column(row[0], data_type, not_null=not_null, default=default)
         
     def prepare_procedure(self, row):
         # because PostgreSQL identifies procedure by <proc_name>(<proc_args>)
