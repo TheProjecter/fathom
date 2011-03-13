@@ -268,6 +268,7 @@ $$ LANGUAGE plpgsql;'''
     def test_fib_integer(self):
         procedure = self.db.procedures['fib(int4)']
         self.assertArguments(procedure, [('fib_for', 'int4')])
+        self.assertEqual(procedure.returns, 'int4')
     
     # postgresql internal methods required for testing
         
