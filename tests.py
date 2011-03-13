@@ -38,6 +38,8 @@ except ImportError:
 class AbstractDatabaseTestCase:
     
     __metaclass__ = ABCMeta
+
+    DEFAULT_INTEGER_TYPE_NAME = 'integer'
     
     TABLES = {
         'one_column': '''CREATE TABLE one_column ("column" varchar(800))''',
@@ -110,7 +112,8 @@ class AbstractDatabaseTestCase:
     def test_table_one_unique_column(self):
         table = self.db.tables['one_unique_column']
         self.assertEqual(set(table.columns.keys()), set(['column']))
-        self.assertEqual(table.columns['column'].type, 'integer')
+        self.assertEqual(table.columns['column'].type, 
+                         self.DEFAULT_INTEGER_TYPE_NAME)
         self.assertEqual(table.columns['column'].not_null, False)
         self.assertEqual(set(table.indices.keys()), 
                          set([self.auto_index_name('one_unique_column')]))
@@ -268,6 +271,8 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     DBNAME = 'fathom'
     USER = 'fathom'
     DATABASE_ERRORS = mysql_errors
+
+    DEFAULT_INTEGER_TYPE_NAME = 'int'
     
     PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
     PROCEDURES['foo_double'] = '''
