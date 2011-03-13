@@ -33,10 +33,12 @@ class DatabaseInspector(metaclass=ABCMeta):
     def get_procedures(self): 
         '''Return names of all stored procedures in the database.'''
         pass
-        
-    @abstractmethod
-    def build_columns(self, schema_object): pass
-        
+
+    def build_columns(self, schema_object):
+        sql = self._COLUMN_NAMES_SQL % schema_object.name
+        schema_object.columns = dict((row[0], self.prepare_column(row)) 
+                                     for row in self._select(sql))
+
     @abstractmethod
     def build_indices(self, table): pass
                         
@@ -144,11 +146,6 @@ WHERE oid = %s;
         import psycopg2
         self._api = psycopg2
 
-    def build_columns(self, schema_object):
-        sql = self._COLUMN_NAMES_SQL % schema_object.name
-        schema_object.columns = dict((row[0], self.prepare_column(row)) 
-                                     for row in self._select(sql))
-
     def build_indices(self, table):
         sql = self._TABLE_INDICE_NAMES_SQL % table.name
         table.indices = dict((row[0], Index(row[0])) 
@@ -210,6 +207,12 @@ FROM information_schema.views"""
 SELECT routine_name
 FROM information_schema.routines
 """
+
+    _COLUMN_NAMES_SQL = """
+SELECT column_name, data_type, character_maximum_length, is_nullable
+FROM information_schema.columns
+WHERE table_name = '%s'
+"""
     
     def __init__(self, *args, **kwargs):
         DatabaseInspector.__init__(self, *args, **kwargs)
@@ -227,9 +230,14 @@ FROM information_schema.routines
     def get_procedures(self):
         return dict((row[0], Procedure(row[0], inspector=self))
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
-
-    def build_columns(self, schema_object): 
-        pass
         
     def build_indices(self, table): 
         pass
+
+    def prepare_column(self, row):
+        if row[1] == 'varchar':
+            data_type = 'varchar(%s)' % row[2]
+        else:
+            data_type = row[1]
+        not_null = (row[3] == 'NO')
+        return Column(row[0], data_type, not_null=not_null)
