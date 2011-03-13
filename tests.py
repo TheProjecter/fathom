@@ -62,7 +62,15 @@ CREATE TABLE two_columns_unique (
 )''',
         '''primary_key_only''': '''
 CREATE TABLE primary_key_only (id integer primary key)
-'''
+''',
+        '''two_double_uniques''': '''
+CREATE TABLE two_double_uniques (
+    x integer, 
+    y integer, 
+    z integer, 
+    unique(x, y),
+    unique(x, z)
+)'''
     }
     
     VIEWS = {
@@ -111,7 +119,7 @@ CREATE TABLE primary_key_only (id integer primary key)
                       (procedure.name, argument.name, argument.type, type)
                 raise AssertionError(msg)
 
-    # tests
+    # table tests
 
     def test_table_names(self):
         self.assertEqual(set([table.name for table in self.db.tables.values()]), 
@@ -134,7 +142,7 @@ CREATE TABLE primary_key_only (id integer primary key)
         self.assertEqual(table.columns['column'].type, 
                          self.DEFAULT_INTEGER_TYPE_NAME)
         self.assertEqual(table.columns['column'].not_null, False)
-        index_names = [self.auto_index_name('one_unique_column', 'column')]
+        index_names = [self.index_name('one_unique_column', 'column')]
         self.assertEqual(set(table.indices.keys()), set(index_names))
         
     def test_table_column_with_default(self):
@@ -151,7 +159,7 @@ CREATE TABLE primary_key_only (id integer primary key)
         values = (('col1', self.DEFAULT_INTEGER_TYPE_NAME, False), 
                   ('col2', 'varchar(80)', False))
         self.assertColumns(table, values)
-        index_names = [self.auto_index_name('two_columns_unique', 
+        index_names = [self.index_name('two_columns_unique', 
                                             'col1', 'col2')]
         self.assertEqual(set(table.indices.keys()), set(index_names))
 
@@ -167,15 +175,29 @@ CREATE TABLE primary_key_only (id integer primary key)
             index_names = []
         self.assertEqual(set(table.indices.keys()), set(index_names))
         
+    def test_two_double_uniques(self):
+        table = self.db.tables['two_double_uniques']
+        values = (('x', self.DEFAULT_INTEGER_TYPE_NAME, False),
+                  ('y', self.DEFAULT_INTEGER_TYPE_NAME, False),
+                  ('z', self.DEFAULT_INTEGER_TYPE_NAME, False))
+        self.assertColumns(table, values)
+        index_names = [self.index_name('two_double_uniques', 'x', 'y', count=1),
+                       self.index_name('two_double_uniques', 'x', 'z', count=2)]
+        self.assertEqual(set(table.indices.keys()), set(index_names))
+    
+    # view tests
+        
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
         self.assertEqual(set(view.columns.keys()), set(['column']))
+        
+    # other tests
 
     def test_supports_procedures(self):
         self.assertTrue(self.db.supports_stored_procedures())
         
     @abstractmethod
-    def auto_index_name(self, table_name, *columns):
+    def index_name(self, table_name, *columns, count=None):
         pass
     
     @abstractmethod
@@ -310,11 +332,16 @@ $$ LANGUAGE plpgsql;'''
     
     # postgresql internal methods required for testing
         
-    def auto_index_name(self, table_name, *columns):
+    def index_name(self, table_name, *columns, count=1):
         if len(columns):
-            return '%s_%s_key' % (table_name, columns[0])
+            name = '%s_%s_key' % (table_name, columns[0])
         else:
-            return '%s_column_key' % table_name
+            name = '%s_column_key' % table_name
+        if count > 1:
+            # postgres has really strange way of indexing index names; first
+            # has no suffix, the following add count suffix beginning with 1
+            name += str(count - 1)
+        return name
             
     def pkey_index_name(self, table_name, *columns):
         return '%s_pkey' % table_name
@@ -348,8 +375,11 @@ CREATE FUNCTION foo_double (value int4)
     
     # postgresql internal methods required for testing
 
-    def auto_index_name(self, table_name, *columns):
-        return '%s' % columns[0]
+    def index_name(self, table_name, *columns, count=1):
+        if count == 1:
+            return '%s' % columns[0]
+        else:
+            return '%s_%d' % (columns[0], count)
 
     def pkey_index_name(self, table_name, *columns):
         return 'PRIMARY'
@@ -428,15 +458,15 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
         self.assertColumns(table, values)
         
         self.assertEqual(set(table.indices.keys()), 
-                         set([self.auto_index_name('auth_permission')]))
+                         set([self.index_name('auth_permission')]))
 
     # sqlite internal methods required for testing
 
-    def auto_index_name(self, table_name, *columns):
-        return 'sqlite_autoindex_%s_1' % table_name
+    def index_name(self, table_name, *columns, count=1):
+        return 'sqlite_autoindex_%s_%d' % (table_name, count)
     
     def pkey_index_name(self, table_name, *columns):
-        return self.auto_index_name(table_name, columns)
+        return self.index_name(table_name, columns)
 
     @classmethod
     def _get_connection(Class):
