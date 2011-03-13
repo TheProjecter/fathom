@@ -100,6 +100,8 @@ CREATE TABLE two_double_uniques (
     # new assertions
     
     def assertColumns(self, table, values):
+        names = set((name for name, _, _ in values))
+        self.assertEqual(set(table.columns.keys()), names)
         for name, type, not_null in values:
             column = table.columns[name]
             if column.type != type:
@@ -155,7 +157,6 @@ CREATE TABLE two_double_uniques (
         
     def test_table_two_columns_unique(self):
         table = self.db.tables['two_columns_unique']
-        self.assertEqual(set(table.columns.keys()), set(['col1', 'col2']))
         values = (('col1', self.DEFAULT_INTEGER_TYPE_NAME, False), 
                   ('col2', 'varchar(80)', False))
         self.assertColumns(table, values)
@@ -165,7 +166,6 @@ CREATE TABLE two_double_uniques (
 
     def test_table_primary_key_only(self):
         table = self.db.tables['primary_key_only']
-        self.assertEqual(set(table.columns.keys()), set(['id']))
         values = (('id', self.DEFAULT_INTEGER_TYPE_NAME, 
                    self.PRIMARY_KEY_IS_NOT_NULL),)
         self.assertColumns(table, values)
@@ -435,10 +435,6 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
     
     def test_sqlite_table_django_admin_log(self):
         table = self.db.tables['django_admin_log']
-        column_names = ('id', 'action_time', 'user_id', 'content_type_id', 
-                        'object_id', 'object_repr', 'action_flag', 
-                        'change_message')
-        self.assertEqual(set(table.columns.keys()), set(column_names))
         values = (('id', 'integer', True), ('action_time', 'datetime', True),
                   ('user_id', 'integer', True), 
                   ('content_type_id', 'integer', False),
@@ -450,8 +446,6 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
 
     def test_sqlite_table_auth_permission(self):
         table = self.db.tables['auth_permission']
-        column_names = 'id', 'name', 'content_type_id', 'codename'
-        self.assertEqual(set(table.columns.keys()), set(column_names))
         values = (('id', 'integer', True), ('name', 'varchar(50)', True),
                   ('content_type_id', 'integer', True),
                   ('codename', 'varchar(100)', True))
