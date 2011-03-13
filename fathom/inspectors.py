@@ -43,6 +43,19 @@ class DatabaseInspector(metaclass=ABCMeta):
         table.indices = dict((row[0], Index(row[0])) 
                              for row in self._select(sql))
 
+    def prepare_default(self, data_type, value):
+        if data_type in self.INTEGER_TYPES:
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return value
+        elif data_type in self.FLOAT_TYPES:
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return value
+        return value
+
     def supports_stored_procedures(self):
         return True
         
@@ -71,6 +84,9 @@ class SqliteInspector(DatabaseInspector):
     _COLUMN_NAMES_SQL = """pragma table_info(%s)"""
     
     _TABLE_INDICE_NAMES_SQL = """pragma index_list(%s)"""
+    
+    INTEGER_TYPES = ('integer', 'smallint')
+    FLOAT_TYPES = ('float',)
 
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -100,22 +116,12 @@ class SqliteInspector(DatabaseInspector):
         not_null = bool(row[3])
         default = self.prepare_default(row[2], row[4]) if row[4] else None
         return Column(row[1], row[2], not_null=not_null, default=default)
-        
-    def prepare_default(self, data_type, value):
-        if data_type in ('integer', 'smallint'):
-            try:
-                return int(value)
-            except ValueError:
-                return value
-        elif data_type in ('float',):
-            try:
-                return float(value)
-            except ValueError:
-                return value
-        return value
 
 
 class PostgresInspector(DatabaseInspector):
+
+    INTEGER_TYPES = ('integer', 'int4', 'int2')
+    FLOAT_TYPES = ('float',)
     
     _TABLE_NAMES_SQL = """
 SELECT table_name 
@@ -208,6 +214,9 @@ WHERE oid = %s;
 
 class MySqlInspector(DatabaseInspector):
 
+    INTEGER_TYPES = ('int',)
+    FLOAT_TYPES = ('float',)
+
     _TABLE_NAMES_SQL = """
 SELECT TABLE_NAME
 FROM information_schema.tables
@@ -224,7 +233,8 @@ FROM information_schema.routines
 """
 
     _COLUMN_NAMES_SQL = """
-SELECT column_name, data_type, character_maximum_length, is_nullable
+SELECT column_name, data_type, character_maximum_length, is_nullable, 
+       column_default
 FROM information_schema.columns
 WHERE table_name = '%s'
 """
@@ -277,7 +287,8 @@ WHERE table_name='%s';
         else:
             data_type = row[1]
         not_null = (row[3] == 'NO')
-        return Column(row[0], data_type, not_null=not_null)
+        default = self.prepare_default(data_type, row[4])
+        return Column(row[0], data_type, not_null=not_null, default=default)
 
     def supports_routine_parametres(self):
         return self.version >= (5, 5)
