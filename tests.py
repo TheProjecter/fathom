@@ -57,7 +57,10 @@ CREATE TABLE two_columns_unique (
     col1 integer,
     col2 varchar(80),
     UNIQUE(col1, col2)
-)'''
+)''',
+        '''primary_key_only''': '''
+CREATE TABLE primary_key_only (id integer primary key)
+'''
     }
     
     VIEWS = {
@@ -149,6 +152,14 @@ CREATE TABLE two_columns_unique (
         index_names = [self.auto_index_name('two_columns_unique', 
                                             'col1', 'col2')]
         self.assertEqual(set(table.indices.keys()), set(index_names))
+
+    def test_table_primary_key_only(self):
+        table = self.db.tables['primary_key_only']
+        self.assertEqual(set(table.columns.keys()), set(['id']))
+        values = (('id', self.DEFAULT_INTEGER_TYPE_NAME, True),)
+        self.assertColumns(table, values)
+        index_names = [self.pkey_index_name('primary_key_only', 'id')]
+        self.assertEqual(set(table.indices.keys()), set(index_names))
         
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
@@ -159,6 +170,10 @@ CREATE TABLE two_columns_unique (
         
     @abstractmethod
     def auto_index_name(self, table_name, *columns):
+        pass
+    
+    @abstractmethod
+    def pkey_index_name(self, table_name, *columns):
         pass
                          
     # protected:
@@ -224,7 +239,8 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
     def test_procedure_names(self):
         self.assertEqual(set([key for key in self.db.procedures.keys()]), 
                          set(self.PROCEDURES.keys()))
-        self.assertEqual(set([procedure.name for procedure in self.db.procedures.values()]), 
+        self.assertEqual(set([procedure.name 
+                              for procedure in self.db.procedures.values()]), 
                          set(self.PROCEDURES.keys()))
 
     # protected:
@@ -293,6 +309,9 @@ $$ LANGUAGE plpgsql;'''
             return '%s_%s_key' % (table_name, columns[0])
         else:
             return '%s_column_key' % table_name
+            
+    def pkey_index_name(self, table_name, *columns):
+        return '%s_pkey' % table_name
         
     @classmethod
     def _get_connection(Class):
