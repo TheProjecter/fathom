@@ -9,8 +9,11 @@ from fathom import (get_sqlite3_database, get_postgresql_database,
 
 try:
     import psycopg2
+    postgres_errors = (psycopg2.OperationalError, psycopg2.ProgrammingError, 
+                       psycopg2.InternalError)
     TEST_POSTGRES = True
 except ImportError:
+    postgres_errors = ()
     TEST_POSTGRES = False
     
 try:
@@ -33,6 +36,7 @@ except ImportError:
                         mysql_module.ProgrammingError,
                         mysql_module.err.InternalError)
     except ImportError:
+        mysql_errors = ()
         TEST_MYSQL = False
 
 class AbstractDatabaseTestCase:
@@ -213,8 +217,7 @@ class PostgresTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     DBNAME = 'fathom'
     USER = 'fathom'
-    if TEST_POSTGRES:
-        DATABASE_ERRORS = (psycopg2.OperationalError, psycopg2.ProgrammingError)
+    DATABASE_ERRORS = postgres_errors
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
     TABLES['empty'] = '''CREATE TABLE empty()'''
