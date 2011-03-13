@@ -1,10 +1,7 @@
-#!/usr/bin/python3.1
+#!/usr/bin/python3
 
 from abc import ABCMeta, abstractmethod
-try:
-    from unittest import TestCase, main, skipUnless
-except ImportError:
-    from unittest2 import TestCase, main, skipUnless
+from unittest import TestCase, main, skipUnless
 from collections import namedtuple
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
@@ -22,11 +19,16 @@ try:
 except ImportError:
     TEST_SQLITE = False
 
+TEST_MYSQL = True
 try:
     import MySQLdb
-    TEST_MYSQL = True
+    mysql_module = MySQLdb
 except ImportError:
-    TEST_MYSQL = False
+    try:
+        import pymysql
+        mysql_module = pymysql
+    except ImportError:
+        TEST_MYSQL = False
 
 class AbstractDatabaseTestCase:
     
@@ -45,21 +47,21 @@ class AbstractDatabaseTestCase:
         'one_column_index': '''CREATE INDEX one_column_index ON one_column("column")'''
     }
 
-    @classmethod
-    def setUpClass(Class):
+    # TODO: this should be turned into setUpClass, when Ubuntu ships python 3.2
+    def setUp(self):
         try:
-            Class._add_operation(Class.TABLES.values())
-            Class._add_operation(Class.VIEWS.values())
-            Class._add_operation(Class.INDICES.values())
-        except Class.DATABASE_ERRORS as e:
-            Class.tearDownClass()
+            self._add_operation(self.TABLES.values())
+            self._add_operation(self.VIEWS.values())
+            self._add_operation(self.INDICES.values())
+        except self.DATABASE_ERRORS as e:
+            self.tearDown()
             raise
         
-    @classmethod
-    def tearDownClass(Class):
-        Class._drop_operation('INDEX', Class.INDICES)
-        Class._drop_operation('VIEW', Class.VIEWS)
-        Class._drop_operation('TABLE', Class.TABLES)
+    # TODO: this should be turned into tearDownClass, when Ubuntu ships python 3.2
+    def tearDown(self):
+        self._drop_operation('INDEX', self.INDICES)
+        self._drop_operation('VIEW', self.VIEWS)
+        self._drop_operation('TABLE', self.TABLES)
 
     # new assertions
     
@@ -161,23 +163,21 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
     
     PROCEDURES = {}
 
-    @classmethod
-    def setUpClass(Class):
+    def setUp(self):
         try:
-            Class._add_operation(Class.TABLES.values())
-            Class._add_operation(Class.VIEWS.values())
-            Class._add_operation(Class.PROCEDURES.values())
-            Class._add_operation(Class.INDICES.values())
-        except Class.DATABASE_ERRORS as e:
-            Class.tearDownClass()
+            self._add_operation(self.TABLES.values())
+            self._add_operation(self.VIEWS.values())
+            self._add_operation(self.PROCEDURES.values())
+            self._add_operation(self.INDICES.values())
+        except self.DATABASE_ERRORS as e:
+            self.tearDown()
             raise
             
-    @classmethod
-    def tearDownClass(Class):
-        Class._drop_operation('INDEX', Class.INDICES)
-        Class._drop_procedures();
-        Class._drop_operation('VIEW', Class.VIEWS)
-        Class._drop_operation('TABLE', Class.TABLES)
+    def tearDown(self):
+        self._drop_operation('INDEX', self.INDICES)
+        self._drop_procedures();
+        self._drop_operation('VIEW', self.VIEWS)
+        self._drop_operation('TABLE', self.TABLES)
         
     # tests
     
@@ -232,6 +232,7 @@ CREATE OR REPLACE FUNCTION fib (fib_for int2) RETURNS integer AS $$
 $$ LANGUAGE plpgsql;'''
 
     def setUp(self):
+        DatabaseWithProceduresTestCase.setUp(self)
         args = self.DBNAME, self.USER
         self.db = get_postgresql_database('dbname=%s user=%s' % args)
             
@@ -262,7 +263,8 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     DBNAME = 'fathom'
     USER = 'fathom'
     if TEST_MYSQL:
-        DATABASE_ERRORS = (MySQLdb.OperationalError, MySQLdb.ProgrammingError)
+        DATABASE_ERRORS = (mysql_module.OperationalError, 
+                           mysql_module.ProgrammingError)
     
     PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
     PROCEDURES['foo_double'] = '''
@@ -272,6 +274,7 @@ CREATE FUNCTION foo_double (value int4)
 '''
 
     def setUp(self):
+        DatabaseWithProceduresTestCase.setUp(self)
         args = self.DBNAME, self.USER
         self.db = get_mysql_database(user=self.USER, db=self.DBNAME)        
     
@@ -282,7 +285,7 @@ CREATE FUNCTION foo_double (value int4)
 
     @classmethod
     def _get_connection(Class):
-        return MySQLdb.connect(user=Class.USER, db=Class.DBNAME)
+        return mysql_module.connect(user=Class.USER, db=Class.DBNAME)
 
     @staticmethod
     def substitute_quote_char(string):
@@ -318,6 +321,7 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
         
 
     def setUp(self):
+        AbstractDatabaseTestCase.setUp(self)
         self.db = get_sqlite3_database(self.PATH)
 
     # sqlite specific tests
