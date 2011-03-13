@@ -51,7 +51,13 @@ CREATE TABLE one_column ("column" varchar(800))''',
         'one_unique_column': '''
 CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
         'column_with_default': '''
-CREATE TABLE column_with_default (def_col integer default 5)'''
+CREATE TABLE column_with_default (def_col integer default 5)''',
+        'two_columns_unique': '''
+CREATE TABLE two_columns_unique (
+    col1 integer,
+    col2 varchar(80),
+    UNIQUE(col1, col2)
+)'''
     }
     
     VIEWS = {
@@ -133,6 +139,16 @@ CREATE TABLE column_with_default (def_col integer default 5)'''
                          self.DEFAULT_INTEGER_TYPE_NAME)
         self.assertEqual(table.columns['def_col'].not_null, False)
         self.assertEqual(table.columns['def_col'].default, 5)
+        
+    def test_table_two_columns_unique(self):
+        table = self.db.tables['two_columns_unique']
+        self.assertEqual(set(table.columns.keys()), set(['col1', 'col2']))
+        values = (('col1', self.DEFAULT_INTEGER_TYPE_NAME, False), 
+                  ('col2', 'varchar(80)', False))
+        self.assertColumns(table, values)
+        index_names = [self.auto_index_name('two_columns_unique', 
+                                            'col1', 'col2')]
+        self.assertEqual(set(table.indices.keys()), set(index_names))
         
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
@@ -273,7 +289,10 @@ $$ LANGUAGE plpgsql;'''
     # postgresql internal methods required for testing
         
     def auto_index_name(self, table_name, *columns):
-        return '%s_column_key' % table_name
+        if len(columns):
+            return '%s_%s_key' % (table_name, columns[0])
+        else:
+            return '%s_column_key' % table_name
         
     @classmethod
     def _get_connection(Class):
@@ -376,6 +395,7 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
                   ('content_type_id', 'integer', True),
                   ('codename', 'varchar(100)', True))
         self.assertColumns(table, values)
+        
         self.assertEqual(set(table.indices.keys()), 
                          set([self.auto_index_name('auth_permission')]))
 
