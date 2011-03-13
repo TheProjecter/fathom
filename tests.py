@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3.1
 
 from abc import ABCMeta, abstractmethod
 try:
@@ -196,7 +196,6 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
                 try:
                     cursor.execute('DROP FUNCTION %s' % name);
                 except Class.DATABASE_ERRORS as e:
-                    print e
                     pass # maybe it was not created, we need to try drop other
         Class._run_using_cursor(function)        
             
@@ -206,7 +205,8 @@ class PostgresTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     DBNAME = 'fathom'
     USER = 'fathom'
-    DATABASE_ERRORS = (psycopg2.OperationalError, psycopg2.ProgrammingError)
+    if TEST_POSTGRES:
+        DATABASE_ERRORS = (psycopg2.OperationalError, psycopg2.ProgrammingError)
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
     TABLES['empty'] = '''CREATE TABLE empty()'''
@@ -231,11 +231,10 @@ CREATE OR REPLACE FUNCTION fib (fib_for int2) RETURNS integer AS $$
     END;
 $$ LANGUAGE plpgsql;'''
 
-    def __init__(self, *args, **kwargs):
-        TestCase.__init__(self, *args, **kwargs)
+    def setUp(self):
         args = self.DBNAME, self.USER
         self.db = get_postgresql_database('dbname=%s user=%s' % args)
-    
+            
     # postgresql specific tests
             
     def test_table_empty(self):
@@ -262,7 +261,8 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     DBNAME = 'fathom'
     USER = 'fathom'
-    DATABASE_ERRORS = (MySQLdb.OperationalError, MySQLdb.ProgrammingError)
+    if TEST_MYSQL:
+        DATABASE_ERRORS = (MySQLdb.OperationalError, MySQLdb.ProgrammingError)
     
     PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
     PROCEDURES['foo_double'] = '''
@@ -271,10 +271,9 @@ CREATE FUNCTION foo_double (value int4)
         RETURN 2 * value;
 '''
 
-    def __init__(self, *args, **kwargs):
-        TestCase.__init__(self, *args, **kwargs)
+    def setUp(self):
         args = self.DBNAME, self.USER
-        self.db = get_mysql_database(user=self.USER, db=self.DBNAME)
+        self.db = get_mysql_database(user=self.USER, db=self.DBNAME)        
     
     # postgresql internal methods required for testing
 
@@ -316,9 +315,9 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
             "codename" varchar(100) NOT NULL,
             UNIQUE ("content_type_id", "codename")
         )'''
+        
 
-    def __init__(self, *args, **kwargs):
-        TestCase.__init__(self, *args, **kwargs)
+    def setUp(self):
         self.db = get_sqlite3_database(self.PATH)
 
     # sqlite specific tests

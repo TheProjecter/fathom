@@ -2,15 +2,13 @@
 
 from abc import ABCMeta, abstractmethod
 
-from errors import FathomError
-from schema import (Database, Table, Column, View, Index, Procedure, Argument)
+from .errors import FathomError
+from .schema import (Database, Table, Column, View, Index, Procedure, Argument)
 
-class DatabaseInspector:
+class DatabaseInspector(metaclass=ABCMeta):
     
     '''Abstract base class for database system inspectors. This class defines
     interface for class inspecting database and creating image.'''
-    
-    __metaclass__ = ABCMeta
     
     def __init__(self, *args, **kwargs):
         self._args = args

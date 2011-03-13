@@ -5,7 +5,7 @@ POSTGRES_PARAMETRES = set(['host', 'hostaddr', 'port', 'dbname', 'user',
                           'service'])
 
 def get_postgres_connection_string(**kwargs):
-    params = ['%s=%s' % (name, value) for name, value in kwargs.items() 
+    params = ['%s=%s' % (name, value) for name, value in list(kwargs.items()) 
                                       if name in POSTGRES_PARAMETRES]
     return ' '.join(params)
         
