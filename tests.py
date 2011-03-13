@@ -351,6 +351,9 @@ CREATE FUNCTION foo_double (value int4)
     def auto_index_name(self, table_name, *columns):
         return '%s' % columns[0]
 
+    def pkey_index_name(self, table_name, *columns):
+        return 'PRIMARY'
+
     @classmethod
     def _get_connection(Class):
         return mysql_module.connect(user=Class.USER, db=Class.DBNAME)
