@@ -46,8 +46,12 @@ class AbstractDatabaseTestCase:
     DEFAULT_INTEGER_TYPE_NAME = 'integer'
     
     TABLES = {
-        'one_column': '''CREATE TABLE one_column ("column" varchar(800))''',
-        'one_unique_column': '''CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
+        'one_column': '''
+CREATE TABLE one_column ("column" varchar(800))''',
+        'one_unique_column': '''
+CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
+        'column_with_default': '''
+CREATE TABLE column_with_default (def_col integer default 5)'''
     }
     
     VIEWS = {
@@ -121,6 +125,14 @@ class AbstractDatabaseTestCase:
         self.assertEqual(table.columns['column'].not_null, False)
         index_names = [self.auto_index_name('one_unique_column', 'column')]
         self.assertEqual(set(table.indices.keys()), set(index_names))
+        
+    def test_table_column_with_default(self):
+        table = self.db.tables['column_with_default']
+        self.assertEqual(set(table.columns.keys()), set(['def_col']))
+        self.assertEqual(table.columns['def_col'].type,
+                         self.DEFAULT_INTEGER_TYPE_NAME)
+        self.assertEqual(table.columns['def_col'].not_null, False)
+        self.assertEqual(table.columns['def_col'].default, 5)
         
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
