@@ -39,10 +39,8 @@ except ImportError:
         mysql_errors = ()
         TEST_MYSQL = False
 
-class AbstractDatabaseTestCase:
+class AbstractDatabaseTestCase(metaclass=ABCMeta):
     
-    __metaclass__ = ABCMeta
-
     DEFAULT_INTEGER_TYPE_NAME = 'integer'
     PRIMARY_KEY_IS_NOT_NULL = True
     CREATES_INDEX_FOR_PRIMARY_KEY = True
