@@ -155,8 +155,8 @@ WHERE oid = %s;
                              
     def build_procedure(self, procedure):
         arg_type_oids = procedure._private['arg_type_oids']
-        sql = self._PROCEDURE_ARGUMENTS_SQL % (procedure.get_base_name(),
-                                               arg_type_oids)
+        name = procedure.name.split('(')[0]
+        sql = self._PROCEDURE_ARGUMENTS_SQL % (name, arg_type_oids)
         result = self._select(sql)[0]
         names, oids = result[0], result[1].split(' ')
         types = self.types_from_oids(oids)
@@ -179,14 +179,14 @@ WHERE oid = %s;
         return Column(row[0], data_type, not_null=not_null)
         
     def prepare_procedure(self, row):
-        procedure = Procedure(row[0], inspector=self)
         # because PostgreSQL identifies procedure by <proc_name>(<proc_args>)
         # we need to name it the same way; also table with procedure names
         # use oids rather than actual type names, so we need decipher them
-        procedure._private['arg_type_oids'] = row[1]
         oids = row[1].split(' ')
         type_string = ', '.join(type for type in self.types_from_oids(oids))
         name = '%s(%s)' % (row[0], type_string)
+        procedure = Procedure(name, inspector=self)
+        procedure._private['arg_type_oids'] = row[1]
         return name, procedure
         
     def types_from_oids(self, oids):
