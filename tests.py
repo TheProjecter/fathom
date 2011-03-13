@@ -23,10 +23,15 @@ TEST_MYSQL = True
 try:
     import MySQLdb
     mysql_module = MySQLdb
+    mysql_errors = (mysql_module.OperationalError, 
+                    mysql_module.ProgrammingError)
 except ImportError:
     try:
         import pymysql
         mysql_module = pymysql
+        mysql_errors = (mysql_module.OperationalError, 
+                        mysql_module.ProgrammingError,
+                        mysql_module.err.InternalError)
     except ImportError:
         TEST_MYSQL = False
 
@@ -262,9 +267,7 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     DBNAME = 'fathom'
     USER = 'fathom'
-    if TEST_MYSQL:
-        DATABASE_ERRORS = (mysql_module.OperationalError, 
-                           mysql_module.ProgrammingError)
+    DATABASE_ERRORS = mysql_errors
     
     PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
     PROCEDURES['foo_double'] = '''
