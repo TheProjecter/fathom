@@ -7,8 +7,7 @@ from .schema import (Database, Table, Column, View, Index, Procedure, Argument)
 
 class DatabaseInspector(metaclass=ABCMeta):
     
-    '''Abstract base class for database system inspectors. This class defines
-    interface for class inspecting database and creating image.'''
+    '''Abstract base class for database system inspectors.'''
     
     def __init__(self, *args, **kwargs):
         self._args = args
