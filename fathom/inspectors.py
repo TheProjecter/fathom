@@ -213,8 +213,16 @@ FROM information_schema.routines
     
     def __init__(self, *args, **kwargs):
         DatabaseInspector.__init__(self, *args, **kwargs)
-        import MySQLdb
-        self._api = MySQLdb
+        try:
+            import MySQLdb
+            self._api = MySQLdb
+        except ImportError:
+            try:
+                import pymysql
+                self._api = pymysql
+            except ImportError:
+                raise FathomError('Either MySQLdb or pymsql package is '
+                                  'required to access MySQL database.')
         
     def get_procedures(self):
         return dict((row[0], Procedure(row[0], inspector=self))
