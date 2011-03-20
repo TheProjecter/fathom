@@ -111,6 +111,10 @@ CREATE TABLE two_double_uniques (
                       (table.name, column.name, column.not_null, not_null)
                 raise AssertionError(msg)
                 
+    def assertIndex(self, table, name, columns):
+        index = table.indices[name]
+        self.assertEqual(index.columns, columns)
+                
     def assertArguments(self, procedure, values):
         for name, type in values:
             argument = procedure.arguments[name]
@@ -144,6 +148,7 @@ CREATE TABLE two_double_uniques (
         self.assertEqual(table.columns['column'].not_null, False)
         index_names = [self.index_name('one_unique_column', 'column')]
         self.assertEqual(set(table.indices.keys()), set(index_names))
+        self.assertIndex(table, index_names[0], ('column',))
         
     def test_table_column_with_default(self):
         table = self.db.tables['column_with_default']
@@ -161,6 +166,7 @@ CREATE TABLE two_double_uniques (
         index_names = [self.index_name('two_columns_unique', 
                                             'col1', 'col2')]
         self.assertEqual(set(table.indices.keys()), set(index_names))
+        self.assertIndex(table, index_names[0], ('col1', 'col2'))
 
     def test_table_primary_key_only(self):
         table = self.db.tables['primary_key_only']
@@ -172,6 +178,8 @@ CREATE TABLE two_double_uniques (
         else:
             index_names = []
         self.assertEqual(set(table.indices.keys()), set(index_names))
+        if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+            self.assertIndex(table, index_names[0], ('primary_key_only', 'id'))
         
     def test_two_double_uniques(self):
         table = self.db.tables['two_double_uniques']
