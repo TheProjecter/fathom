@@ -114,6 +114,12 @@ CREATE TABLE two_double_uniques (
     def assertIndex(self, table, name, columns):
         index = table.indices[name]
         self.assertEqual(index.columns, columns)
+        
+    def assertIndices(self, table, index_names):
+        names = set(index_names)
+        self.assertEqual(set(table.indices.keys()), names)
+        self.assertEqual(set([index.name for index in table.indices.values()]),
+                         names)
                 
     def assertArguments(self, procedure, values):
         for name, type in values:
@@ -165,7 +171,7 @@ CREATE TABLE two_double_uniques (
         self.assertColumns(table, values)
         index_names = [self.index_name('two_columns_unique', 
                                             'col1', 'col2')]
-        self.assertEqual(set(table.indices.keys()), set(index_names))
+        self.assertIndices(table, index_names)
         self.assertIndex(table, index_names[0], ('col1', 'col2'))
 
     def test_table_primary_key_only(self):

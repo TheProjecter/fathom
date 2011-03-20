@@ -40,7 +40,7 @@ class DatabaseInspector(metaclass=ABCMeta):
 
     def build_indices(self, table):
         sql = self._TABLE_INDICE_NAMES_SQL % table.name
-        table.indices = dict((row[0], Index(row[0])) 
+        table.indices = dict((row[0], Index(row[0], inspector=self)) 
                              for row in self._select(sql))
 
     def prepare_default(self, data_type, value):
@@ -85,6 +85,8 @@ class SqliteInspector(DatabaseInspector):
     
     _TABLE_INDICE_NAMES_SQL = """pragma index_list(%s)"""
     
+    _INDEX_COLUMNS_SQL = """pragma index_info(%s)"""
+    
     INTEGER_TYPES = ('integer', 'smallint')
     FLOAT_TYPES = ('float',)
 
@@ -109,13 +111,17 @@ class SqliteInspector(DatabaseInspector):
                                      
     def build_indices(self, table):
         sql = self._TABLE_INDICE_NAMES_SQL % table.name
-        table.indices = dict((row[1], Index(row[0]))
+        table.indices = dict((row[1], Index(row[1], inspector=self))
                              for row in self._select(sql))
         
     def prepare_column(self, row):
         not_null = bool(row[3])
         default = self.prepare_default(row[2], row[4]) if row[4] else None
         return Column(row[1], row[2], not_null=not_null, default=default)
+        
+    def get_index_columns(self, index):
+        sql = self._INDEX_COLUMNS_SQL % index.name
+        return tuple(row[2] for row in self._select(sql))
 
 
 class PostgresInspector(DatabaseInspector):

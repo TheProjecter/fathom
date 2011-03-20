@@ -117,9 +117,18 @@ class View(WithColumns):
 
 class Index(object):
     
-    def __init__(self, name):
+    def __init__(self, name, inspector=None):
         super(Index, self).__init__()
         self.name = name
+        self._columns = None
+        self.inspector = inspector
+        
+    def _get_columns(self):
+        if self._columns is None:
+            self._columns = self.inspector.get_index_columns(self)
+        return self._columns
+        
+    columns = property(_get_columns)
 
         
 class Procedure(object):
