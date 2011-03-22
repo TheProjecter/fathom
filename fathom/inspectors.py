@@ -3,7 +3,8 @@
 from abc import ABCMeta, abstractmethod
 
 from .errors import FathomError
-from .schema import (Database, Table, Column, View, Index, Procedure, Argument)
+from .schema import (Database, Table, Column, View, Index, Procedure, Argument,
+                     Trigger)
 
 class DatabaseInspector(metaclass=ABCMeta):
     
@@ -31,7 +32,11 @@ class DatabaseInspector(metaclass=ABCMeta):
     @abstractmethod
     def get_procedures(self): 
         '''Return names of all stored procedures in the database.'''
-        pass
+        
+    def get_triggers(self):
+        '''Returns names of all triggers in the database.'''
+        return dict((row[0], Trigger(row[0]))
+                    for row in self._select(self._TRIGGER_NAMES_SQL))
 
     def get_index_columns(self, index):
         sql = self._INDEX_COLUMNS_SQL % index.name
@@ -84,6 +89,11 @@ class SqliteInspector(DatabaseInspector):
     _VIEW_NAMES_SQL = """SELECT name
                          FROM sqlite_master
                          WHERE type= 'view'"""
+                         
+    _TRIGGER_NAMES_SQL = """
+SELECT name
+FROM sqlite_master
+WHERE type = 'trigger'"""
     
     _COLUMN_NAMES_SQL = """pragma table_info(%s)"""
     
