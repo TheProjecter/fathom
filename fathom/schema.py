@@ -55,6 +55,7 @@ class Database(object):
     def supports_stored_procedures(self):
         return self.inspector.supports_stored_procedures()
 
+
 class WithColumns(object):
 
     def __init__(self):

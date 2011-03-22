@@ -33,6 +33,10 @@ class DatabaseInspector(metaclass=ABCMeta):
         '''Return names of all stored procedures in the database.'''
         pass
 
+    def get_index_columns(self, index):
+        sql = self._INDEX_COLUMNS_SQL % index.name
+        return tuple(row[0] for row in self._select(sql))        
+
     def build_columns(self, schema_object):
         sql = self._COLUMN_NAMES_SQL % schema_object.name
         schema_object.columns = dict((row[0], self.prepare_column(row)) 
@@ -179,6 +183,12 @@ SELECT typname
 FROM pg_type
 WHERE oid = %s;
 """
+
+    _INDEX_COLUMNS_SQL = """
+SELECT attname 
+FROM pg_catalog.pg_class, pg_catalog.pg_attribute 
+WHERE relname='%s' AND attrelid=oid;
+"""
     
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -303,10 +313,6 @@ WHERE index_name = '%s'
             pass
         else:
             procedure.arguments = {}
-            
-    def get_index_columns(self, index):
-        sql = self._INDEX_COLUMNS_SQL % index.name
-        return tuple(row[0] for row in self._select(sql))        
 
     def prepare_column(self, row):
         if row[1] == 'varchar':
