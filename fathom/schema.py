@@ -51,23 +51,7 @@ class Database(object):
         return self._procedures
     
     procedures = property(_get_procedures)
-        
-    def add_table(self, name):
-        self.tables[name] = Table(name)
-        return self.tables[name]
-        
-    def add_view(self, name):
-        self.views[name] = View(name)
-        return self.views[name]
-    
-    def add_index(self, name):
-        self.indices[name] = Index(name)
-        return self.indices[name]
-        
-    def add_stored_procedure(self, name):
-        self.stored_procedures[name] = StoredProcedure(name)
-        return self.stored_procedures[name]
-        
+                
     def supports_stored_procedures(self):
         return self.inspector.supports_stored_procedures()
 
