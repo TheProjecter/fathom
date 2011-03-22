@@ -78,6 +78,12 @@ CREATE TABLE two_double_uniques (
     INDICES = {
         'one_column_index': '''CREATE INDEX one_column_index ON one_column("column")'''
     }
+    
+    TRIGGERS = {
+        'before_insert_trigger': '''
+CREATE TRIGGER before_insert_trigger BEFORE INSERT ON one_column
+FOR EACH ROW BEGIN SELECT * from one_column; END'''
+    }
 
     # TODO: this should be turned into setUpClass, when Ubuntu ships python 3.2
     def setUp(self):
@@ -85,12 +91,14 @@ CREATE TABLE two_double_uniques (
             self._add_operation(self.TABLES.values())
             self._add_operation(self.VIEWS.values())
             self._add_operation(self.INDICES.values())
+            self._add_operation(self.TRIGGERS.values())
         except self.DATABASE_ERRORS as e:
             self.tearDown()
             raise
         
     # TODO: this should be turned into tearDownClass, when Ubuntu ships python 3.2
     def tearDown(self):
+        self._drop_operation('TRIGGER', self.TRIGGERS)
         self._drop_operation('INDEX', self.INDICES)
         self._drop_operation('VIEW', self.VIEWS)
         self._drop_operation('TABLE', self.TABLES)
@@ -134,11 +142,7 @@ CREATE TABLE two_double_uniques (
     def test_table_names(self):
         self.assertEqual(set([table.name for table in self.db.tables.values()]), 
                          set(self.TABLES.keys()))
-        
-    def test_view_names(self):
-        self.assertEqual(set([view.name for view in self.db.views.values()]), 
-                         set(self.VIEWS.keys()))
-                         
+
     def test_table_one_column(self):
         table = self.db.tables['one_column']
         self.assertEqual(set(table.columns.keys()), set(['column']))
@@ -198,10 +202,20 @@ CREATE TABLE two_double_uniques (
         self.assertEqual(set(table.indices.keys()), set(index_names))
     
     # view tests
+
+    def test_view_names(self):
+        self.assertEqual(set([view.name for view in self.db.views.values()]), 
+                         set(self.VIEWS.keys()))
         
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
         self.assertEqual(set(view.columns.keys()), set(['column']))
+
+    # triggers tests
+    
+    def test_triggers_names(self):
+        triggers = [trigger.name for trigger in self.db.triggers.values()]
+        self.assertEqual(set(triggers), self.TRIGGERS.keys())
         
     # other tests
 

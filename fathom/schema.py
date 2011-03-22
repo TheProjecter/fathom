@@ -12,13 +12,19 @@ class Database(object):
         self._tables = None
         self._views = None
         self._procedures = None
-
-    def _refresh_tables(self):
-        if self.inspector is not None:
-            self._tables = self.inspector.get_tables()
-        else:
-            self._tables = {}
+        self._triggers = None
         
+    def get_refresh_method(name):
+        def refresh_attribute(self):
+            if self.inspector is not None:
+                value = getattr(self.inspector, 'get_' + name)()
+                setattr(self, '_' + name,  value)
+            else:
+                setattr(self, '_' + name, {})
+        return refresh_attribute
+
+    _refresh_tables = get_refresh_method('tables')
+            
     def _get_tables(self):
         if self._tables is None:
             self._refresh_tables()
@@ -26,11 +32,7 @@ class Database(object):
     
     tables = property(_get_tables)
     
-    def _refresh_views(self):
-        if self.inspector is not None:
-            self._views = self.inspector.get_views()
-        else:
-            self._views = {}
+    _refresh_views = get_refresh_method('views')
     
     def _get_views(self):
         if self._views is None:
@@ -38,12 +40,8 @@ class Database(object):
         return self._views
         
     views = property(_get_views)
-    
-    def _refresh_procedures(self):
-        if self.inspector is not None:
-            self._procedures = self.inspector.get_procedures()
-        else:
-            self.procedures = {}
+
+    _refresh_procedures = get_refresh_method('procedures')
     
     def _get_procedures(self):
         if self._procedures is None:
@@ -51,7 +49,16 @@ class Database(object):
         return self._procedures
     
     procedures = property(_get_procedures)
-                
+    
+    _refresh_triggers = get_refresh_method('triggers')
+    
+    def _get_triggers(self):
+        if self._triggers is None:
+            self._refresh_triggers()
+        return self._triggers
+        
+    triggers = property(_get_triggers)
+    
     def supports_stored_procedures(self):
         return self.inspector.supports_stored_procedures()
 
@@ -143,6 +150,13 @@ class Procedure(object):
         self._arguments = arguments
         
     arguments = property(_get_arguments, _set_arguments)
+
+
+class Trigger(object):
+    
+    def __init__(self, name):
+        super(Trigger, self).__init__()
+        self.name = name
 
 
 class Argument(object):
