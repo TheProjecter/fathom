@@ -185,7 +185,7 @@ CREATE TABLE two_double_uniques (
             index_names = []
         self.assertEqual(set(table.indices.keys()), set(index_names))
         if self.CREATES_INDEX_FOR_PRIMARY_KEY:
-            self.assertIndex(table, index_names[0], ('primary_key_only', 'id'))
+            self.assertIndex(table, index_names[0], ('id',))
         
     def test_two_double_uniques(self):
         table = self.db.tables['two_double_uniques']
@@ -364,7 +364,7 @@ $$ LANGUAGE plpgsql;'''
         return psycopg2.connect('dbname=%s user=%s' % args)
 
 
-@skipUnless(TEST_MYSQL, 'Failed to import MySQLDb module.')
+@skipUnless(TEST_MYSQL, 'Failed to import MySQLDb or PyMySQL module.')
 class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     DBNAME = 'fathom'
