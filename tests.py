@@ -82,7 +82,7 @@ CREATE TABLE two_double_uniques (
     TRIGGERS = {
         'before_insert_trigger': '''
 CREATE TRIGGER before_insert_trigger BEFORE INSERT ON one_column
-FOR EACH ROW BEGIN SELECT * from one_column; END'''
+FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     }
 
     # TODO: this should be turned into setUpClass, when Ubuntu ships python 3.2
@@ -278,11 +278,13 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
             self._add_operation(self.VIEWS.values())
             self._add_operation(self.PROCEDURES.values())
             self._add_operation(self.INDICES.values())
+            self._add_operation(self.TRIGGERS.values())
         except self.DATABASE_ERRORS as e:
             self.tearDown()
             raise
             
     def tearDown(self):
+        self._drop_operation('TRIGGER', self.TRIGGERS)
         self._drop_operation('INDEX', self.INDICES)
         self._drop_procedures();
         self._drop_operation('VIEW', self.VIEWS)
@@ -339,6 +341,10 @@ CREATE OR REPLACE FUNCTION fib (fib_for int2) RETURNS integer AS $$
         RETURN fib(fib_for - 2) + fib(fib_for - 1);
     END;
 $$ LANGUAGE plpgsql;'''
+
+    # postgresql defines only subset of sql CREATE TRIGGER statement, that's
+    # why keep separate dictionary of trigger fixtures
+    TRIGGERS = {}
 
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)

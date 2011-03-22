@@ -152,6 +152,11 @@ WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"""
 SELECT viewname
 FROM pg_views
 WHERE schemaname = 'public'"""
+
+    _TRIGGER_NAMES_SQL = """
+SELECT tgname
+FROM pg_catalog.pg_trigger
+"""
                           
     _COLUMN_NAMES_SQL = """
 SELECT column_name, data_type, character_maximum_length, is_nullable,
@@ -267,6 +272,11 @@ FROM information_schema.views"""
     _PROCEDURE_NAMES_SQL = """
 SELECT routine_name
 FROM information_schema.routines
+"""
+
+    _TRIGGER_NAMES_SQL = """
+SELECT trigger_name
+FROM information_schema.triggers
 """
 
     _COLUMN_NAMES_SQL = """
