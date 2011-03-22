@@ -259,7 +259,13 @@ WHERE table_name = '%s'
     _TABLE_INDICE_NAMES_SQL = """
 SELECT index_name 
 FROM information_schema.statistics
-WHERE table_name='%s';
+WHERE table_name = '%s'
+"""
+
+    _INDEX_COLUMNS_SQL = """
+SELECT column_name
+FROM information_schema.statistics
+WHERE index_name = '%s'
 """
 
     _VERSION_SQL = """
@@ -297,6 +303,10 @@ WHERE table_name='%s';
             pass
         else:
             procedure.arguments = {}
+            
+    def get_index_columns(self, index):
+        sql = self._INDEX_COLUMNS_SQL % index.name
+        return tuple(row[0] for row in self._select(sql))        
 
     def prepare_column(self, row):
         if row[1] == 'varchar':
