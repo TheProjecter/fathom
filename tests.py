@@ -341,6 +341,13 @@ CREATE OR REPLACE FUNCTION fib (fib_for int2) RETURNS integer AS $$
         RETURN fib(fib_for - 2) + fib(fib_for - 1);
     END;
 $$ LANGUAGE plpgsql;'''
+    PROCEDURES['before_insert_trigger_function()'] = '''
+CREATE FUNCTION before_insert_trigger_function() RETURNS trigger AS $$
+    BEGIN
+        IF NEW.column < 3 THEN
+        END IF;
+    END;
+$$ LANGUAGE plpgsql'''
 
     # postgresql defines only subset of sql CREATE TRIGGER statement, that's
     # why keep separate dictionary of trigger fixtures

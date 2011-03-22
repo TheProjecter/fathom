@@ -243,9 +243,12 @@ WHERE relname='%s' AND attrelid=oid;
         # because PostgreSQL identifies procedure by <proc_name>(<proc_args>)
         # we need to name it the same way; also table with procedure names
         # use oids rather than actual type names, so we need decipher them
-        oids = row[1].split(' ')
-        type_string = ', '.join(type for type in self.types_from_oids(oids))
-        name = '%s(%s)' % (row[0], type_string)
+        if row[1]:
+            oids = row[1].split(' ')
+            type_string = ', '.join(type for type in self.types_from_oids(oids))
+            name = '%s(%s)' % (row[0], type_string)
+        else:
+            name = '%s()' % row[0]
         procedure = Procedure(name, inspector=self)
         procedure._private['arg_type_oids'] = row[1]
         return name, procedure
