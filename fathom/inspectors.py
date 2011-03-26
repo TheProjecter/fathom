@@ -156,6 +156,8 @@ WHERE schemaname = 'public'"""
     _TRIGGER_NAMES_SQL = """
 SELECT tgname
 FROM pg_catalog.pg_trigger
+WHERE tgname NOT IN ('pg_sync_pg_database', 'pg_sync_pg_authid', 
+                     'pg_sync_pg_auth_members')
 """
                           
     _COLUMN_NAMES_SQL = """
