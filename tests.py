@@ -91,14 +91,14 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
             self._add_operation(self.TABLES.values())
             self._add_operation(self.VIEWS.values())
             self._add_operation(self.INDICES.values())
-            self._add_operation(self.TRIGGERS.values())
+            self._add_triggers()
         except self.DATABASE_ERRORS as e:
             self.tearDown()
             raise
         
     # TODO: this should be turned into tearDownClass, when Ubuntu ships python 3.2
     def tearDown(self):
-        self._drop_operation('TRIGGER', self.TRIGGERS)
+        self._drop_triggers()
         self._drop_operation('INDEX', self.INDICES)
         self._drop_operation('VIEW', self.VIEWS)
         self._drop_operation('TABLE', self.TABLES)
@@ -262,6 +262,12 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
                 except Class.DATABASE_ERRORS as e:
                     pass # maybe it was not created, we need to try drop other
         Class._run_using_cursor(function)
+
+    def _add_triggers(self):
+        self._add_operation(self.TRIGGERS.values())
+        
+    def _drop_triggers(self):
+        self._drop_operation('TRIGGER', self.TRIGGERS)
         
     @staticmethod
     def substitute_quote_char(string):
@@ -278,13 +284,13 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
             self._add_operation(self.VIEWS.values())
             self._add_operation(self.PROCEDURES.values())
             self._add_operation(self.INDICES.values())
-            self._add_operation(self.TRIGGERS.values())
+            self._add_triggers()
         except self.DATABASE_ERRORS as e:
             self.tearDown()
             raise
             
     def tearDown(self):
-        self._drop_operation('TRIGGER', self.TRIGGERS)
+        self._drop_triggers()
         self._drop_operation('INDEX', self.INDICES)
         self._drop_procedures();
         self._drop_operation('VIEW', self.VIEWS)
@@ -350,8 +356,12 @@ CREATE FUNCTION before_insert_trigger_function() RETURNS trigger AS $$
 $$ LANGUAGE plpgsql'''
 
     # postgresql defines only subset of sql CREATE TRIGGER statement, that's
-    # why keep separate dictionary of trigger fixtures
-    TRIGGERS = {}
+    # why keep separate dictionary of trigger fixtures and also must keep
+    # table names to drop trigger properly
+    TRIGGERS = {'before_insert_trigger': ('''
+CREATE TRIGGER before_insert_trigger BEFORE INSERT ON one_column
+EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_column')
+    }
 
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
@@ -389,6 +399,19 @@ $$ LANGUAGE plpgsql'''
     def _get_connection(Class):
         args = Class.DBNAME, Class.USER
         return psycopg2.connect('dbname=%s user=%s' % args)
+        
+    def _add_triggers(self):
+        sqls = [trigger for trigger, _ in self.TRIGGERS.values()]
+        self._add_operation(sqls)
+
+    def _drop_triggers(self):
+        def function(Class, cursor):
+            for name, (_, table) in Class.TRIGGERS.items():
+                try:
+                    cursor.execute('DROP TRIGGER %s ON %s' % (name, table));
+                except Class.DATABASE_ERRORS as e:
+                    pass # maybe it was not created, we need to try drop other
+        self._run_using_cursor(function)
 
 
 @skipUnless(TEST_MYSQL, 'Failed to import MySQLDb or PyMySQL module.')
