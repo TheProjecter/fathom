@@ -195,7 +195,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         if self.CREATES_INDEX_FOR_PRIMARY_KEY:
             self.assertIndex(table, index_names[0], ('id',))
         
-    def test_two_double_uniques(self):
+    def test_table_two_double_uniques(self):
         table = self.db.tables['two_double_uniques']
         values = (('x', self.DEFAULT_INTEGER_TYPE_NAME, False),
                   ('y', self.DEFAULT_INTEGER_TYPE_NAME, False),
@@ -204,6 +204,14 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         index_names = [self.index_name('two_double_uniques', 'x', 'y', count=1),
                        self.index_name('two_double_uniques', 'x', 'z', count=2)]
         self.assertEqual(set(table.indices.keys()), set(index_names))
+    
+    def test_table_reference_one_unique_column(self):
+        table = self.db.tables['reference_one_unique_column']
+        self.assertEqual(len(table.foreign_keys), 1)
+        fk = table.foreign_keys[0]
+        self.assertEqual(fk.columns, ('column',))
+        self.assertEqual(fk.referenced_table, 'one_unique_column')
+        self.assertEqual(fk.referenced_columns, ('column',))
     
     # view tests
 
@@ -488,7 +496,6 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
             "codename" varchar(100) NOT NULL,
             UNIQUE ("content_type_id", "codename")
         )'''
-        
 
     def setUp(self):
         AbstractDatabaseTestCase.setUp(self)
