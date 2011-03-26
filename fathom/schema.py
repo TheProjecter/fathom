@@ -87,6 +87,7 @@ class Table(WithColumns):
         self.name = name
         self.inspector = inspector
         self._indices = None
+        self._foreign_keys = None
 
     def _get_indices(self):
         if self._indices is None:
@@ -97,6 +98,16 @@ class Table(WithColumns):
         self._indices = indices
     
     indices = property(_get_indices, _set_indices)
+    
+    def _get_foreign_keys(self):
+        if self._foreign_keys is None:
+            self.inspector.build_foreign_keys(self)
+        return self._foreign_keys
+        
+    def _set_foreign_keys(self, foreign_keys):
+        self._foreign_keys = foreign_keys
+        
+    foreign_keys = property(_get_foreign_keys, _set_foreign_keys)
         
 
 class View(WithColumns):

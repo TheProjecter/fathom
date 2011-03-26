@@ -51,6 +51,9 @@ class DatabaseInspector(metaclass=ABCMeta):
         sql = self._TABLE_INDICE_NAMES_SQL % table.name
         table.indices = dict((row[0], Index(row[0], inspector=self)) 
                              for row in self._select(sql))
+                             
+    def build_foreign_keys(self, table):
+        table.foreign_keys = []
 
     def prepare_default(self, data_type, value):
         if data_type in self.INTEGER_TYPES:
