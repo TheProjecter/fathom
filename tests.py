@@ -5,7 +5,7 @@ from unittest import TestCase, main, skipUnless
 from collections import namedtuple
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
-                    get_mysql_database)
+                    get_mysql_database, get_database_type, FathomError)
 
 try:
     import psycopg2
@@ -528,6 +528,26 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
     def _get_connection(Class):
         return sqlite3.connect(Class.PATH)
 
+
+class DatabaseTypeTestCase(TestCase):
+    
+    def test_sqlite(self):
+        self.assertEqual(get_database_type('fathom.db3'), 'Sqlite3')
+        
+    def test_mysql(self):
+        self.assertEqual(get_database_type(user='fahom', db='fathom'), 'MySQL')
+        
+    def test_postgres(self):
+        self.assertEqual(get_database_type('dbname=fathom user=fathom'),
+                         'PostgreSQL')
+    
+    def test_exception(self):
+        self.assertRaises(FathomError, get_database_type, 
+                          'non_existing_file.db')
+        self.assertRaises(FathomError, get_database_type, user='fathom', 
+                          db='non_existing_database')
+        self.assertRaises(FathomError, get_database_type, 
+                          'dbname=not_existing_database user=fathom')
 
 if __name__ == "__main__":
     main()
