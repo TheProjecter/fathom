@@ -535,7 +535,7 @@ class DatabaseTypeTestCase(TestCase):
         self.assertEqual(get_database_type('fathom.db3'), 'Sqlite3')
         
     def test_mysql(self):
-        self.assertEqual(get_database_type(user='fahom', db='fathom'), 'MySQL')
+        self.assertEqual(get_database_type(user='fathom', db='fathom'), 'MySQL')
         
     def test_postgres(self):
         self.assertEqual(get_database_type('dbname=fathom user=fathom'),
