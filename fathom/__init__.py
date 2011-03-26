@@ -13,3 +13,13 @@ def get_postgresql_database(args):
 
 def get_mysql_database(**kwargs):
     return Database(inspector=MySqlInspector(**kwargs))
+
+_TYPE_TO_FUNCTION = {
+    'Sqlite3': get_sqlite3_database,
+    'PostgreSQL': get_postgresql_database,
+    'MySQL': get_mysql_database
+}
+
+def get_database(*args, **kwargs):
+    function = _TYPE_TO_FUNCTION[get_database_type(*args, **kwargs)]
+    return function(*args, **kwargs)
