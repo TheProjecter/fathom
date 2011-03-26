@@ -5,7 +5,8 @@ from unittest import TestCase, main, skipUnless
 from collections import namedtuple
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
-                    get_mysql_database, get_database_type, FathomError)
+                    get_mysql_database, get_database, get_database_type, 
+                    FathomError)
 
 try:
     import psycopg2
@@ -366,7 +367,7 @@ EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_column')
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         args = self.DBNAME, self.USER
-        self.db = get_postgresql_database('dbname=%s user=%s' % args)
+        self.db = get_database('dbname=%s user=%s' % args)
             
     # postgresql specific tests
             
@@ -433,7 +434,7 @@ CREATE FUNCTION foo_double (value int4)
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         args = self.DBNAME, self.USER
-        self.db = get_mysql_database(user=self.USER, db=self.DBNAME)        
+        self.db = get_database(user=self.USER, db=self.DBNAME)        
     
     # postgresql internal methods required for testing
 
@@ -488,7 +489,7 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
 
     def setUp(self):
         AbstractDatabaseTestCase.setUp(self)
-        self.db = get_sqlite3_database(self.PATH)
+        self.db = get_database(self.PATH)
 
     # sqlite specific tests
 
