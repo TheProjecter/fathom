@@ -157,7 +157,8 @@ WHERE schemaname = 'public'"""
 SELECT tgname
 FROM pg_catalog.pg_trigger
 WHERE tgname NOT IN ('pg_sync_pg_database', 'pg_sync_pg_authid', 
-                     'pg_sync_pg_auth_members')
+                     'pg_sync_pg_auth_members') AND
+      tgname NOT LIKE 'RI_ConstraintTrigger_%'
 """
                           
     _COLUMN_NAMES_SQL = """

@@ -2,7 +2,7 @@
 
 from abc import ABCMeta, abstractmethod
 from unittest import TestCase, main, skipUnless
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, get_database, get_database_type, 
@@ -46,31 +46,34 @@ class AbstractDatabaseTestCase(metaclass=ABCMeta):
     PRIMARY_KEY_IS_NOT_NULL = True
     CREATES_INDEX_FOR_PRIMARY_KEY = True
     
-    TABLES = {
-        'one_column': '''
-CREATE TABLE one_column ("column" varchar(800))''',
-        'one_unique_column': '''
-CREATE TABLE one_unique_column ("column" integer UNIQUE)''',
-        'column_with_default': '''
-CREATE TABLE column_with_default (def_col integer default 5)''',
-        'two_columns_unique': '''
+    TABLES = OrderedDict((
+        ('one_column', '''
+CREATE TABLE one_column ("column" varchar(800))'''),
+        ('one_unique_column', '''
+CREATE TABLE one_unique_column ("column" integer UNIQUE)'''),
+        ('column_with_default', '''
+CREATE TABLE column_with_default (def_col integer default 5)'''),
+        ('two_columns_unique', '''
 CREATE TABLE two_columns_unique (
     col1 integer,
     col2 varchar(80),
     UNIQUE(col1, col2)
-)''',
-        '''primary_key_only''': '''
+)'''),
+        ('primary_key_only', '''
 CREATE TABLE primary_key_only (id integer primary key)
-''',
-        '''two_double_uniques''': '''
+'''),
+        ('two_double_uniques', '''
 CREATE TABLE two_double_uniques (
     x integer, 
     y integer, 
     z integer, 
     unique(x, y),
     unique(x, z)
-)'''
-    }
+)'''),
+    ('reference_one_unique_column', '''
+CREATE TABLE reference_one_unique_column (
+    ref_one_column integer REFERENCES one_unique_column("column")
+)''')))
     
     VIEWS = {
         'one_column_view': '''CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
@@ -102,7 +105,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self._drop_triggers()
         self._drop_operation('INDEX', self.INDICES)
         self._drop_operation('VIEW', self.VIEWS)
-        self._drop_operation('TABLE', self.TABLES)
+        self._drop_operation('TABLE', reversed(tuple(self.TABLES.keys())))
 
     # new assertions
     
@@ -212,9 +215,9 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         view = self.db.views['one_column_view']
         self.assertEqual(set(view.columns.keys()), set(['column']))
 
-    # triggers tests
+    # trigger tests
     
-    def test_triggers_names(self):
+    def test_trigger_names(self):
         triggers = [trigger.name for trigger in self.db.triggers.values()]
         self.assertEqual(set(triggers), self.TRIGGERS.keys())
         
@@ -260,7 +263,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
             for name in names:
                 try:
                     cursor.execute('DROP %s %s' % (type, name));
-                except Class.DATABASE_ERRORS as e:
+                except Class.DATABASE_ERRORS:
                     pass # maybe it was not created, we need to try drop other
         Class._run_using_cursor(function)
 
@@ -295,7 +298,7 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
         self._drop_operation('INDEX', self.INDICES)
         self._drop_procedures();
         self._drop_operation('VIEW', self.VIEWS)
-        self._drop_operation('TABLE', self.TABLES)
+        self._drop_operation('TABLE', reversed(tuple(self.TABLES.keys())))
         
     # tests
     
