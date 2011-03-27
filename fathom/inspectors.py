@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 
 from .errors import FathomError
 from .schema import (Database, Table, Column, View, Index, Procedure, Argument,
-                     Trigger)
+                     Trigger, ForeignKey)
 
 class DatabaseInspector(metaclass=ABCMeta):
     
@@ -53,6 +53,8 @@ class DatabaseInspector(metaclass=ABCMeta):
                              for row in self._select(sql))
                              
     def build_foreign_keys(self, table):
+        sql = self._FOREIGN_KEYS_SQL % table.name
+        rows = self._select(sql)
         table.foreign_keys = []
 
     def prepare_default(self, data_type, value):
@@ -104,6 +106,8 @@ WHERE type = 'trigger'"""
     
     _INDEX_COLUMNS_SQL = """pragma index_info(%s)"""
     
+    _FOREIGN_KEYS_SQL = """pragma foreign_key_list(%s)"""
+    
     INTEGER_TYPES = ('integer', 'smallint')
     FLOAT_TYPES = ('float',)
 
@@ -140,6 +144,16 @@ WHERE type = 'trigger'"""
         sql = self._INDEX_COLUMNS_SQL % index.name
         return tuple(row[2] for row in self._select(sql))
 
+    def build_foreign_keys(self, table):
+        sql = self._FOREIGN_KEYS_SQL % table.name
+        rows = self._select(sql)
+        foreign_keys = {}
+        for row in rows:
+            fk = foreign_keys.setdefault(row[0], ForeignKey())
+            fk.referenced_table = row[2]
+            fk.columns.append(row[3])
+            fk.referenced_columns.append(row[4])
+        table.foreign_keys = tuple(foreign_keys.values())
 
 class PostgresInspector(DatabaseInspector):
 

@@ -209,9 +209,9 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         table = self.db.tables['reference_one_unique_column']
         self.assertEqual(len(table.foreign_keys), 1)
         fk = table.foreign_keys[0]
-        self.assertEqual(fk.columns, ('column',))
+        self.assertEqual(fk.columns, ['ref_one_column',])
         self.assertEqual(fk.referenced_table, 'one_unique_column')
-        self.assertEqual(fk.referenced_columns, ('column',))
+        self.assertEqual(fk.referenced_columns, ['column',])
     
     # view tests
 

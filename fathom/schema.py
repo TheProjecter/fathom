@@ -186,3 +186,12 @@ class Column(object):
         self.type = type
         self.not_null = not_null
         self.default = default
+
+
+class ForeignKey(object):
+    
+    def __init__(self):
+        super(object, self).__init__()
+        self.columns = []
+        self.referenced_table = None
+        self.referenced_columns = []
