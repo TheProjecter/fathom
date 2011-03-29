@@ -52,11 +52,6 @@ class DatabaseInspector(metaclass=ABCMeta):
         table.indices = dict((row[0], Index(row[0], inspector=self)) 
                              for row in self._select(sql))
                              
-    def build_foreign_keys(self, table):
-        sql = self._FOREIGN_KEYS_SQL % table.name
-        rows = self._select(sql)
-        table.foreign_keys = []
-
     def prepare_default(self, data_type, value):
         if data_type in self.INTEGER_TYPES:
             try:
@@ -224,6 +219,18 @@ SELECT attname
 FROM pg_catalog.pg_class, pg_catalog.pg_attribute 
 WHERE relname='%s' AND attrelid=oid;
 """
+
+    _FOREIGN_KEYS_SQL = """
+SELECT ref.relname, conkey, confkey
+FROM pg_catalog.pg_constraint, pg_catalog.pg_class tab, 
+     pg_catalog.pg_class ref
+WHERE contype = 'f' AND confrelid = ref.oid AND conrelid = tab.oid AND 
+      tab.relname = '%s'"""
+      
+    _COLUMNS_FROM_POSITIONS_SQL = """
+SELECT column_name
+FROM information_schema.columns
+WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
     
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -244,6 +251,18 @@ WHERE relname='%s' AND attrelid=oid;
         oid = self._select(sql)[0][0]
         procedure.returns = self.types_from_oids([oid])[0]
 
+    def build_foreign_keys(self, table):
+        sql = self._FOREIGN_KEYS_SQL % table.name
+        rows = self._select(sql)
+        foreign_keys = []
+        for row in rows:
+            fk = ForeignKey()
+            fk.referenced_table = row[0]
+            fk.columns = self.get_table_columns(table.name, row[1])
+            fk.referenced_columns = self.get_table_columns(row[0], row[2])
+            foreign_keys.append(fk)
+        table.foreign_keys = foreign_keys
+        
     def get_procedures(self):
         return dict(self.prepare_procedure(row)
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
@@ -275,6 +294,11 @@ WHERE relname='%s' AND attrelid=oid;
         
     def types_from_oids(self, oids):
         return [self._select(self._TYPE_SQL % oid)[0][0] for oid in oids]
+    
+    def get_table_columns(self, table, positions):
+        positions = ', '.join([str(position) for position in positions])
+        sql = self._COLUMNS_FROM_POSITIONS_SQL % (table, positions)
+        return [row[0] for row in self._select(sql)]
 
 
 class MySqlInspector(DatabaseInspector):
