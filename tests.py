@@ -73,7 +73,13 @@ CREATE TABLE two_double_uniques (
     ('reference_one_unique_column', '''
 CREATE TABLE reference_one_unique_column (
     ref_one_column integer REFERENCES one_unique_column("column")
-)''')))
+)'''),
+    ('reference_two_tables', '''
+CREATE TABLE reference_two_tables (
+    ref1 integer REFERENCES one_unique_column("column"),
+    ref2 integer REFERENCES primary_key_only(id)
+)''')
+))
     
     VIEWS = {
         'one_column_view': '''CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
@@ -212,7 +218,11 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self.assertEqual(fk.columns, ['ref_one_column',])
         self.assertEqual(fk.referenced_table, 'one_unique_column')
         self.assertEqual(fk.referenced_columns, ['column',])
-    
+        
+    def test_table_reference_two_tables(self):
+        table = self.db.tables['reference_two_tables']
+        self.assertEqual(len(table.foreign_keys), 2)
+            
     # view tests
 
     def test_view_names(self):
@@ -437,12 +447,23 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
 
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     TABLES['one_unique_column'] = '''
-CREATE TABLE one_unique_column ("column" integer UNIQUE) engine=innodb'''
+CREATE TABLE one_unique_column ("column" integer UNIQUE) ENGINE = INNODB'''
+    TABLES['primary_key_only'] = '''
+CREATE TABLE primary_key_only (id integer primary key) ENGINE = INNODB
+'''
     TABLES['reference_one_unique_column'] = '''
 CREATE TABLE reference_one_unique_column (
     ref_one_column integer,
     FOREIGN KEY (ref_one_column) REFERENCES one_unique_column("column")
-) engine=innodb'''
+) ENGINE = INNODB'''
+    TABLES['reference_two_tables'] = '''
+CREATE TABLE reference_two_tables (
+    ref1 integer,
+    ref2 integer,
+    FOREIGN KEY (ref1) REFERENCES one_unique_column("column"),
+    FOREIGN KEY (ref2) REFERENCES primary_key_only(id)
+) ENGINE = INNODB'''
+
 
     PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
     PROCEDURES['foo_double'] = '''
