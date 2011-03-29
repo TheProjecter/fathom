@@ -434,7 +434,16 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     DATABASE_ERRORS = mysql_errors
 
     DEFAULT_INTEGER_TYPE_NAME = 'int'
-    
+
+    TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
+    TABLES['one_unique_column'] = '''
+CREATE TABLE one_unique_column ("column" integer UNIQUE) engine=innodb'''
+    TABLES['reference_one_unique_column'] = '''
+CREATE TABLE reference_one_unique_column (
+    ref_one_column integer,
+    FOREIGN KEY (ref_one_column) REFERENCES one_unique_column("column")
+) engine=innodb'''
+
     PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
     PROCEDURES['foo_double'] = '''
 CREATE FUNCTION foo_double (value int4)

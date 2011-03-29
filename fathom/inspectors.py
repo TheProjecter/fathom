@@ -348,6 +348,13 @@ WHERE index_name = '%s'
     _VERSION_SQL = """
     SELECT version()
 """
+
+    _FOREIGN_KEYS_SQL = """
+SELECT constraint_name, column_name, referenced_table_name, 
+       referenced_column_name
+FROM information_schema.key_column_usage
+WHERE table_name = '%s'
+"""
     
     def __init__(self, *args, **kwargs):
         DatabaseInspector.__init__(self, *args, **kwargs)
@@ -380,6 +387,17 @@ WHERE index_name = '%s'
             pass
         else:
             procedure.arguments = {}
+
+    def build_foreign_keys(self, table):
+        sql = self._FOREIGN_KEYS_SQL % table.name
+        rows = self._select(sql)
+        foreign_keys = {}
+        for row in rows:
+            fk = foreign_keys.setdefault(row[0], ForeignKey())
+            fk.referenced_table = row[2]
+            fk.columns.append(row[1])
+            fk.referenced_columns.append(row[3])
+        table.foreign_keys = list(foreign_keys.values())
 
     def prepare_column(self, row):
         if row[1] == 'varchar':
