@@ -236,8 +236,11 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     # trigger tests
     
     def test_trigger_names(self):
-        triggers = [trigger.name for trigger in self.db.triggers.values()]
-        self.assertEqual(set(triggers), self.TRIGGERS.keys())
+        self.assertEqual(set(self.db.triggers.keys()), self.TRIGGERS.keys())
+        
+    def test_trigger_before_insert_trigger(self):
+        trigger = self.db.triggers['before_insert_trigger']
+        self.assertEqual(trigger.table, 'one_column')
         
     # other tests
 
@@ -380,9 +383,14 @@ $$ LANGUAGE plpgsql'''
     # postgresql defines only subset of sql CREATE TRIGGER statement, that's
     # why keep separate dictionary of trigger fixtures and also must keep
     # table names to drop trigger properly
-    TRIGGERS = {'before_insert_trigger': ('''
+    # also postgres identifies a trigger by a pair <trigger_name>, <table>
+    # that's why we must hold postgres trigger names differently
+    TRIGGERS = {'before_insert_trigger(one_column)': ('''
 CREATE TRIGGER before_insert_trigger BEFORE INSERT ON one_column
-EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_column')
+EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_column'),
+                'before_insert_trigger(one_unique_column)': ('''
+CREATE TRIGGER before_insert_trigger BEFORE INSERT ON one_unique_column
+EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_unique_column'),
     }
 
     def setUp(self):
@@ -400,7 +408,13 @@ EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_column')
         procedure = self.db.procedures['fib(int4)']
         self.assertArguments(procedure, [('fib_for', 'int4')])
         self.assertEqual(procedure.returns, 'int4')
+
+    # trigger tests
     
+    def test_trigger_before_insert_trigger(self):
+        trigger = self.db.triggers['before_insert_trigger(one_column)']
+        self.assertEqual(trigger.table, 'one_column')
+        
     # postgresql internal methods required for testing
         
     def index_name(self, table_name, *columns, count=1):
@@ -429,6 +443,7 @@ EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_column')
     def _drop_triggers(self):
         def function(Class, cursor):
             for name, (_, table) in Class.TRIGGERS.items():
+                name = name.split('(')[0]
                 try:
                     cursor.execute('DROP TRIGGER %s ON %s' % (name, table));
                 except Class.DATABASE_ERRORS as e:

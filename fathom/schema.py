@@ -165,9 +165,22 @@ class Procedure(object):
 
 class Trigger(object):
     
-    def __init__(self, name):
+    def __init__(self, name, inspector=None):
         super(Trigger, self).__init__()
         self.name = name
+        self._table = None
+        self.inspector = inspector
+        self._private = {}
+        
+    def _get_table(self):
+        if self._table is None:
+            self.inspector.build_trigger(self)
+        return self._table
+        
+    def _set_table(self, table):
+        self._table = table
+        
+    table = property(_get_table, _set_table)
 
 
 class Argument(object):
