@@ -35,7 +35,7 @@ class DatabaseInspector(metaclass=ABCMeta):
         
     def get_triggers(self):
         '''Returns names of all triggers in the database.'''
-        return dict((row[0], Trigger(row[0]))
+        return dict((row[0], Trigger(row[0], inspector=self))
                     for row in self._select(self._TRIGGER_NAMES_SQL))
 
     def get_index_columns(self, index):
@@ -166,11 +166,12 @@ FROM pg_views
 WHERE schemaname = 'public'"""
 
     _TRIGGER_NAMES_SQL = """
-SELECT tgname
-FROM pg_catalog.pg_trigger
+SELECT tgname, class.relname, tgrelid
+FROM pg_catalog.pg_trigger, pg_catalog.pg_class class
 WHERE tgname NOT IN ('pg_sync_pg_database', 'pg_sync_pg_authid', 
                      'pg_sync_pg_auth_members') AND
-      tgname NOT LIKE 'RI_ConstraintTrigger_%'
+      tgname NOT LIKE 'RI_ConstraintTrigger_%' AND
+      class.oid = tgrelid
 """
                           
     _COLUMN_NAMES_SQL = """
@@ -263,9 +264,22 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
             foreign_keys.append(fk)
         table.foreign_keys = foreign_keys
         
+    def build_trigger(self, trigger):
+        pass
+        
     def get_procedures(self):
         return dict(self.prepare_procedure(row)
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
+
+    def get_triggers(self):
+        '''Returns names of all triggers in the database.'''
+        triggers = {}
+        for row in self._select(self._TRIGGER_NAMES_SQL):
+            name = '%s(%s)' % (row[0], row[1])
+            trigger = Trigger(row[0], inspector=self)
+            trigger._private['oid'] = row[2]
+            triggers[name] = trigger
+        return triggers
             
     def prepare_column(self, row):
         # because PostgreSQL keeps varchar type as character varying, we need
