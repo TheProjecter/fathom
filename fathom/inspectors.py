@@ -103,6 +103,10 @@ WHERE type = 'trigger'"""
     
     _FOREIGN_KEYS_SQL = """pragma foreign_key_list(%s)"""
     
+    _TRIGGER_SQL = """
+SELECT sql FROM sqlite_master 
+WHERE type='trigger' AND name = '%s'"""
+    
     INTEGER_TYPES = ('integer', 'smallint')
     FLOAT_TYPES = ('float',)
 
@@ -129,6 +133,16 @@ WHERE type = 'trigger'"""
         sql = self._TABLE_INDICE_NAMES_SQL % table.name
         table.indices = dict((row[1], Index(row[1], inspector=self))
                              for row in self._select(sql))
+                             
+    def build_trigger(self, trigger):
+        sql = self._TRIGGER_SQL % trigger.name
+        sql = self._select(sql)[0][0]
+        sql = sql.replace('\n', ' ').replace('\r', ' ').split(' ')
+        sql = [part for part in sql if part]
+        index = sql.index('ON')
+        if index == -1 or index + 1 == len(sql):
+            raise FathomError('Failed to parse CREATE TRIGGER statement.')
+        trigger.table = sql[index + 1]
         
     def prepare_column(self, row):
         not_null = bool(row[3])
@@ -263,10 +277,7 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
             fk.referenced_columns = self.get_table_columns(row[0], row[2])
             foreign_keys.append(fk)
         table.foreign_keys = foreign_keys
-        
-    def build_trigger(self, trigger):
-        pass
-        
+                
     def get_procedures(self):
         return dict(self.prepare_procedure(row)
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
@@ -336,7 +347,7 @@ FROM information_schema.routines
 """
 
     _TRIGGER_NAMES_SQL = """
-SELECT trigger_name
+SELECT trigger_name, event_object_table
 FROM information_schema.triggers
 """
 
@@ -395,6 +406,15 @@ WHERE table_name = '%s'
     def get_procedures(self):
         return dict((row[0], Procedure(row[0], inspector=self))
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
+
+    def get_triggers(self):
+        '''Returns names of all triggers in the database.'''
+        triggers = {}
+        for row in self._select(self._TRIGGER_NAMES_SQL):
+            trigger = Trigger(row[0], inspector=self)
+            trigger.table = row[1]
+            triggers[row[0]] = trigger
+        return triggers
         
     def build_procedure(self, procedure):
         if self.supports_routine_parametres():
