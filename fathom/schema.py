@@ -170,7 +170,6 @@ class Trigger(object):
         self.name = name
         self._table = None
         self.inspector = inspector
-        self._private = {}
         
     def _get_table(self):
         if self._table is None:
