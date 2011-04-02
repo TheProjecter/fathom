@@ -277,7 +277,7 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
         for row in self._select(self._TRIGGER_NAMES_SQL):
             name = '%s(%s)' % (row[0], row[1])
             trigger = Trigger(row[0], inspector=self)
-            trigger._private['oid'] = row[2]
+            trigger.table = row[1]
             triggers[name] = trigger
         return triggers
             
