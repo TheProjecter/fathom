@@ -408,6 +408,14 @@ EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_unique_column'),
         procedure = self.db.procedures['fib(int4)']
         self.assertArguments(procedure, [('fib_for', 'int4')])
         self.assertEqual(procedure.returns, 'int4')
+        self.assertEqual(procedure.sql, '''
+    BEGIN
+        IF fib_for < 2 THEN
+            RETURN fib_for;
+        END IF;
+        RETURN fib(fib_for - 2) + fib(fib_for - 1);
+    END;
+''')
 
     # trigger tests
     
