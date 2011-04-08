@@ -12,13 +12,23 @@ def database2django(db):
 
 def table2django(table):
     class_name = build_class_name(table)
-    result = '''class %s(model.Model):
-    class Meta:
+    fields = build_fields(table)
+    result = 'class %s(model.Model):\n' % class_name
+    for field in fields:
+        result += '    %s' % field
+    result += '''\n    class Meta:
         db_table = %s'''
-    print(result % (class_name, table.name))
+    print(result)
 
 def build_class_name(table):
     return ''.join([part.title() for part in table.name.split('_')])
+
+def build_fields(table):
+    result = []
+    for column in table.columns.values():
+        if column.type == 'integer':
+            result.append('%s = IntegerField()\n' % column.name)
+    return result
 
 def _get_mysql_database(args):
     kwargs = {}
