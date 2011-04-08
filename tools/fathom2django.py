@@ -17,7 +17,7 @@ def table2django(table):
     for field in fields:
         result += '    %s' % field
     result += '''\n    class Meta:
-        db_table = %s'''
+        db_table = %s''' % table.name
     print(result)
 
 def build_class_name(table):
