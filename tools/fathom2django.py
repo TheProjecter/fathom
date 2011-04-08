@@ -27,7 +27,10 @@ def build_fields(table):
     result = []
     for column in table.columns.values():
         if column.type == 'integer':
-            result.append('%s = IntegerField()\n' % column.name)
+            if column.name == 'id':
+                pass # django implictly creates id field
+            else:
+                result.append('%s = IntegerField()\n' % column.name)
     return result
 
 def _get_mysql_database(args):
