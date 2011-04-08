@@ -30,8 +30,18 @@ def build_fields(table):
             if column.name == 'id':
                 pass # django implictly creates id field
             else:
-                result.append('%s = IntegerField()\n' % column.name)
+                result.append('%s = models.IntegerField()\n' % column.name)
+        elif column.type == 'float' or column.type.startswith('double'):
+            result.append('%s = model.FloatField()\n' % column.name)
+        elif column.type.startswith('varchar'):
+            result.append(build_varchar_field(column))
+        else:
+            pass # can't determine type, ignoring
     return result
+    
+def build_varchar_field(column):
+    length = int(column.type.split('(')[1][:-1])
+    return '%s = model.CharField(max_length=%d)\n' % (column.name, length)
 
 def _get_mysql_database(args):
     kwargs = {}
