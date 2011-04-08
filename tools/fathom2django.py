@@ -6,11 +6,18 @@ import fathom
 
 DESCRIPTION = 'Build django models from database schema.'
 
-def database2django():
-    pass
+def database2django(db):
+    for table in db.tables.values():
+        table2django(table)
 
-def table2django():
-    pass
+def table2django(table):
+    class_name = build_class_name(table)
+    result = '''class %s(model.Model):
+    pass'''
+    print(result % class_name)
+
+def build_class_name(table):
+    return ''.join([part.title() for part in table.name.split('_')])
 
 def _get_mysql_database(args):
     kwargs = {}
@@ -30,6 +37,7 @@ def fathom2django(args):
         db = fathom.get_postgresql_database(args['string'])
     elif args['database_type'] == 'mysql':
         db = _get_mysql_database(args)
+    database2django(db)
 
 def add_postgres_subparser(subparsers):
     postgres = subparsers.add_parser('postgresql')
