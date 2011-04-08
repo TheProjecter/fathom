@@ -13,8 +13,9 @@ def database2django(db):
 def table2django(table):
     class_name = build_class_name(table)
     result = '''class %s(model.Model):
-    pass'''
-    print(result % class_name)
+    class Meta:
+        db_table = %s'''
+    print(result % (class_name, table.name))
 
 def build_class_name(table):
     return ''.join([part.title() for part in table.name.split('_')])
