@@ -40,6 +40,8 @@ def build_fields(table):
             result.append('%s = models.DateField()\n' % column.name)
         elif column.type == 'datetime':
             result.append('%s = models.DateTimeField()\n' % column.name)
+        elif column.type == 'text':
+            result.append('%s = models.TextField()\n' % column.name)
         elif column.type.startswith('varchar'):
             result.append(build_varchar_field(column))
         else:
