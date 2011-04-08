@@ -498,9 +498,16 @@ CREATE FUNCTION foo_double (value int4)
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         args = self.DBNAME, self.USER
-        self.db = get_database(user=self.USER, db=self.DBNAME)        
+        self.db = get_database(user=self.USER, db=self.DBNAME)
+        
+    # tests
     
-    # postgresql internal methods required for testing
+    def test_foo_double(self):
+        procedure = self.db.procedures['foo_double']
+        self.assertEqual(procedure.returns, 'integer')
+        self.assertEqual(procedure.sql, 'RETURN 2 * value')
+    
+    # mysql internal methods required for testing
 
     def index_name(self, table_name, *columns, count=1):
         if count == 1:

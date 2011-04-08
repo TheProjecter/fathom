@@ -343,7 +343,7 @@ SELECT TABLE_NAME
 FROM information_schema.views"""
 
     _PROCEDURE_NAMES_SQL = """
-SELECT routine_name
+SELECT routine_name, dtd_identifier, routine_definition
 FROM information_schema.routines
 """
 
@@ -405,9 +405,21 @@ WHERE table_name = '%s'
             self.version = (5, 0)
         
     def get_procedures(self):
-        return dict((row[0], Procedure(row[0], inspector=self))
+        return dict(self.prepare_procedure(row)
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
-
+                    
+    def prepare_procedure(self, row):
+        procedure = Procedure(row[0], inspector=self)
+        if row[1] is None:
+            procedure.returns = None
+        elif row[1].startswith('int'):
+            procedure.returns = 'integer'
+        else:
+            procedure.returns = row[1]
+        procedure.sql = row[2]
+        procedure._private['arg_type_oids'] = row[1]
+        return row[0], procedure
+        
     def get_triggers(self):
         '''Returns names of all triggers in the database.'''
         triggers = {}
@@ -419,7 +431,7 @@ WHERE table_name = '%s'
         
     def build_procedure(self, procedure):
         if self.supports_routine_parametres():
-            pass
+            procedure.arguments = {} # i need mysql 5.5 for this
         else:
             procedure.arguments = {}
 
