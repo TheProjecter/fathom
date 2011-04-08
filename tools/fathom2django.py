@@ -43,7 +43,10 @@ def build_fields(table):
         elif column.type.startswith('varchar'):
             result.append(build_varchar_field(column))
         else:
-            pass # can't determine type, ignoring
+            # can't determine type, adding warning
+            comment = '# failed to build field for column %s: %s\n' % \
+                      (column.name, column.type)
+            result.append(comment)
     return result
     
 def build_varchar_field(column):
