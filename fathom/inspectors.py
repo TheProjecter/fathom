@@ -206,7 +206,7 @@ WHERE schemaname='public' AND tablename='%s'
 """
 
     _PROCEDURE_NAMES_SQL = """
-SELECT proname, proargtypes
+SELECT proname, proargtypes, prosrc
 FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
 WHERE pg_language.lanname = 'plpgsql'
 """
@@ -314,6 +314,7 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
         else:
             name = '%s()' % row[0]
         procedure = Procedure(name, inspector=self)
+        procedure.sql = row[2]
         procedure._private['arg_type_oids'] = row[1]
         return name, procedure
         
