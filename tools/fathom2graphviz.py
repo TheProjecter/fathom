@@ -19,17 +19,6 @@ def table_node(table):
 def table_connections(table):
     for fk in table.foreign_keys:
         print(' "%s" -> "%s";' % (table.name, fk.referenced_table))
-    
-def table2django(table):
-    class_name = build_class_name(table)
-    fields = build_fields(table)
-    result = 'class %s(model.Model):\n' % class_name
-    for field in fields:
-        result += '    %s' % field
-    result += '''\n    class Meta:
-        db_table = %s''' % table.name
-    result += '\n'
-    print(result)
 
 def main():
     parser = FathomArgumentParser(description=DESCRIPTION)
