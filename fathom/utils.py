@@ -45,7 +45,7 @@ class FathomArgumentParser(ArgumentParser):
             return get_sqlite3_database(args['path'])
         elif args['database_type'] == 'postgresql':
             from . import get_postgresql_database
-            return fathom.get_postgresql_database(args['string'])
+            return get_postgresql_database(args['string'])
         elif args['database_type'] == 'mysql':
             return self.get_mysql_database(args)
             
