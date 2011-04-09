@@ -29,7 +29,6 @@ class DatabaseInspector(metaclass=ABCMeta):
         return dict((row[0], Index(row[0])) 
                     for row in self._select(self._INDEX_NAMES_SQL))
         
-    @abstractmethod
     def get_procedures(self): 
         '''Return names of all stored procedures in the database.'''
         
@@ -457,3 +456,17 @@ WHERE table_name = '%s'
 
     def supports_routine_parametres(self):
         return self.version >= (5, 5)
+
+
+class OracleInspector(DatabaseInspector):
+
+    _TABLE_NAMES_SQL = """
+SELECT object_name 
+FROM user_objects 
+WHERE object_type = 'TABLE' AND object_name NOT LIKE 'BIN%'
+"""
+
+    def __init__(self, *db_params):
+        DatabaseInspector.__init__(self, *db_params)
+        import cx_Oracle
+        self._api = cx_Oracle

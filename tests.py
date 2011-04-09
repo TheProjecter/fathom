@@ -563,6 +563,10 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
         DatabaseWithProceduresTestCase.setUp(self)
         self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
 
+    def test_table_names(self):
+        self.assertEqual(set([table.name for table in self.db.tables.values()]), 
+                         set([name.upper() for name in self.TABLES.keys()]))
+
     def index_name(self, table_name, *columns, count=1):
         return ''
         
