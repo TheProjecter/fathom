@@ -3,6 +3,7 @@ syntax: glob
 *.db3
 *.pyc
 *.pdf
+*.dot
 build
 dist
 
