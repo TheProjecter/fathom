@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import fathom
 from fathom.utils import FathomArgumentParser
 
 DESCRIPTION = 'Build django models from database schema.'
