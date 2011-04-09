@@ -22,8 +22,7 @@ def table_node(table, args):
         label = '<table><tr><td bgcolor="lightgrey">%s</td></tr>%s</table>' % \
                 (table.name, columns)
         print(' "%s"[shape=none,label=<%s>];' % (table.name, label))
-        
-    
+
 def table_connections(table):
     for fk in table.foreign_keys:
         print(' "%s" -> "%s";' % (table.name, fk.referenced_table))
