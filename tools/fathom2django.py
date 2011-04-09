@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-import argparse
-
 import fathom
 from fathom.utils import FathomArgumentParser
 
