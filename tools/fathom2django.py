@@ -32,11 +32,11 @@ def build_fields(table):
                 result.append('%s = models.IntegerField()\n' % column.name)
         elif column.type == 'float' or column.type.startswith('double'):
             result.append('%s = models.FloatField()\n' % column.name)
-        elif column.type == 'bool':
+        elif column.type == 'bool' or column.type == 'boolean':
             result.append('%s = models.BooleanField()\n' % column.name)
         elif column.type == 'date':
             result.append('%s = models.DateField()\n' % column.name)
-        elif column.type == 'datetime':
+        elif column.type == 'datetime' or column.type.startswith('timestamp'):
             result.append('%s = models.DateTimeField()\n' % column.name)
         elif column.type == 'text':
             result.append('%s = models.TextField()\n' % column.name)
