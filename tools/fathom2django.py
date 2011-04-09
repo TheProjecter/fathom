@@ -55,14 +55,11 @@ def build_fields(table):
 def build_varchar_field(column):
     length = int(column.type.split('(')[1][:-1])
     return '%s = model.CharField(max_length=%d)\n' % (column.name, length)
-
-def fathom2django(db, args):
-    database2django(db)
         
 def main():
     parser = FathomArgumentParser(description=DESCRIPTION)
     db, args = parser.parse_args()
-    fathom2django(db, vars(args))
+    database2django(db)
 
 if __name__ == "__main__":
     main()
