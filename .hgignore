@@ -1,0 +1,10 @@
+syntax: glob
+
+*.db3
+*.pyc
+*.pdf
+build
+dist
+
+.coverage
+MANIFEST
