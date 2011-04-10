@@ -461,9 +461,15 @@ WHERE table_name = '%s'
 class OracleInspector(DatabaseInspector):
 
     _TABLE_NAMES_SQL = """
-SELECT object_name 
+SELECT lower(object_name)
 FROM user_objects 
 WHERE object_type = 'TABLE' AND object_name NOT LIKE 'BIN%'
+"""
+    
+    _VIEW_NAMES_SQL = """
+SELECT lower(object_name)
+FROM user_objects
+WHERE object_type = 'VIEW'
 """
 
     def __init__(self, *db_params):

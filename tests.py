@@ -92,7 +92,7 @@ CREATE TABLE reference_two_tables (
 ))
     
     VIEWS = {
-        'one_column_view': '''CREATE VIEW one_column_view AS SELECT col FROM one_column;''',
+        'one_column_view': '''CREATE VIEW one_column_view AS SELECT col FROM one_column''',
     }
     
     INDICES = {
@@ -553,10 +553,7 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     TABLES.pop('one_unique_column')
     TABLES.pop('reference_one_unique_column')
     TABLES.pop('reference_two_tables')
-    
-    VIEWS = DatabaseWithProceduresTestCase.VIEWS.copy()
-    VIEWS.pop('one_column_view')
-    
+        
     INDICES = DatabaseWithProceduresTestCase.INDICES.copy()
     INDICES.pop('one_column_index')
     
@@ -566,10 +563,6 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
-
-    def test_table_names(self):
-        self.assertEqual(set([table.name for table in self.db.tables.values()]), 
-                         set([name.upper() for name in self.TABLES.keys()]))
 
     def index_name(self, table_name, *columns, count=1):
         return ''
