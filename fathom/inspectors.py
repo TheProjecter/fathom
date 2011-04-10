@@ -472,6 +472,12 @@ FROM user_objects
 WHERE object_type = 'VIEW'
 """
 
+    _TRIGGER_NAMES_SQL = """
+SELECT lower(object_name)
+FROM user_objects
+WHERE object_type = 'TRIGGER'
+"""
+
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
         import cx_Oracle
