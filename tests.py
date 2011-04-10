@@ -557,9 +557,6 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     INDICES = DatabaseWithProceduresTestCase.INDICES.copy()
     INDICES.pop('one_column_index')
     
-    TRIGGERS = DatabaseWithProceduresTestCase.TRIGGERS.copy()
-    TRIGGERS.pop('before_insert_trigger')
-
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
