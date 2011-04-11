@@ -1,7 +1,11 @@
 #!/usr/bin/python3
 
 from os.path import exists
-from argparse import ArgumentParser
+try:
+    from argparse import ArgumentParser
+except ImportError: 
+    # falling back to local argparse module for user convenience
+    from ._argparse import ArgumentParser
 
 from .errors import FathomError
 
