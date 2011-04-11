@@ -5,8 +5,8 @@ from unittest import TestCase, main, skipUnless
 from collections import namedtuple, OrderedDict
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
-                    get_mysql_database, get_database, get_database_type, 
-                    FathomError)
+                    get_mysql_database, get_oracle_database, get_database, 
+                    get_database_type, FathomError)
 
 try:
     import psycopg2
@@ -39,6 +39,14 @@ except ImportError:
     except ImportError:
         mysql_errors = ()
         TEST_MYSQL = False
+        
+try:
+    import cx_Oracle
+    oracle_errors = (cx_Oracle.DatabaseError,)
+    TEST_ORACLE = True
+except ImportError:
+    oracle_errors = ()
+    TEST_ORACLE = False
 
 class AbstractDatabaseTestCase(metaclass=ABCMeta):
     
@@ -48,7 +56,9 @@ class AbstractDatabaseTestCase(metaclass=ABCMeta):
     
     TABLES = OrderedDict((
         ('one_column', '''
-CREATE TABLE one_column ("column" varchar(800))'''),
+CREATE TABLE one_column (col varchar(800))'''),
+        ('reserved_word_column', '''
+CREATE TABLE reserved_word_column ("column" varchar(800))'''),
         ('one_unique_column', '''
 CREATE TABLE one_unique_column ("column" integer UNIQUE)'''),
         ('column_with_default', '''
@@ -82,11 +92,11 @@ CREATE TABLE reference_two_tables (
 ))
     
     VIEWS = {
-        'one_column_view': '''CREATE VIEW one_column_view AS SELECT "column" FROM one_column;''',
+        'one_column_view': '''CREATE VIEW one_column_view AS SELECT col FROM one_column''',
     }
     
     INDICES = {
-        'one_column_index': '''CREATE INDEX one_column_index ON one_column("column")'''
+        'one_column_index': '''CREATE INDEX one_column_index ON one_column(col)'''
     }
     
     TRIGGERS = {
@@ -155,9 +165,9 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
 
     def test_table_one_column(self):
         table = self.db.tables['one_column']
-        self.assertEqual(set(table.columns.keys()), set(['column']))
-        self.assertEqual(table.columns['column'].type, 'varchar(800)')
-        self.assertEqual(table.columns['column'].not_null, False)
+        self.assertEqual(set(table.columns.keys()), set(['col']))
+        self.assertEqual(table.columns['col'].type, 'varchar(800)')
+        self.assertEqual(table.columns['col'].not_null, False)
         self.assertEqual(set(table.indices.keys()), set(['one_column_index']))
         
     def test_table_one_unique_column(self):
@@ -231,7 +241,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         
     def test_view_one_column_view(self):
         view = self.db.views['one_column_view']
-        self.assertEqual(set(view.columns.keys()), set(['column']))
+        self.assertEqual(set(view.columns.keys()), set(['col']))
 
     # trigger tests
     
@@ -526,6 +536,44 @@ CREATE FUNCTION foo_double (value int4)
     def substitute_quote_char(string):
         return string.replace('"', '`')
 
+
+@skipUnless(TEST_ORACLE, 'Failed to import cx_Oracle module.')
+class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
+    
+    # watch out when running those tests, cx_Oracle likes to segfault
+
+    USER = 'fathom'
+    PASSWORD = 'fathom'
+    
+    DATABASE_ERRORS = oracle_errors
+    
+    TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
+    # oracle doesn't accept reserved words as identifiers
+    TABLES.pop('reserved_word_column')
+    TABLES.pop('one_unique_column')
+    TABLES.pop('reference_one_unique_column')
+    TABLES.pop('reference_two_tables')
+        
+    INDICES = DatabaseWithProceduresTestCase.INDICES.copy()
+    INDICES.pop('one_column_index')
+    
+    def setUp(self):
+        DatabaseWithProceduresTestCase.setUp(self)
+        self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
+
+    def index_name(self, table_name, *columns, count=1):
+        return ''
+        
+    def pkey_index_name(self, table_name, *columns):
+        return ''
+
+    @classmethod
+    def _get_connection(Class):
+        return cx_Oracle.connect('%s/%s' % (Class.USER, Class.PASSWORD))
+
+    @staticmethod
+    def substitute_quote_char(string):
+        return string.replace('"', '')
 
 @skipUnless(TEST_SQLITE, 'Failed to import sqlite3 module.')
 class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
