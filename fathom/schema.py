@@ -165,10 +165,15 @@ class Procedure(object):
 
 class Trigger(object):
     
-    def __init__(self, name, inspector=None):
+    BEFORE, AFTER, INSTEAD = range(3)
+    UPDATE, INSERT, DELETE = range(3)
+    
+    def __init__(self, name, when=None, event=None, inspector=None):
         super(Trigger, self).__init__()
         self.name = name
         self._table = None
+        self.when = when
+        self.event = event
         self.inspector = inspector
         
     def _get_table(self):
