@@ -4,9 +4,13 @@ from fathom.utils import FathomArgumentParser
 
 DESCRIPTION = 'Build django models from database schema.'
 
-def database2django(db):
-    for table in db.tables.values():
-        table2django(table)
+def database2django(db, args):
+    result = ''.join([table2django(table) for table in db.tables.values()])
+    if args.output is not None:
+        with open(args.output, 'w') as file:
+            file.write(result)
+    else:
+        print(result)
 
 def table2django(table):
     class_name = build_class_name(table)
@@ -16,8 +20,8 @@ def table2django(table):
         result += '    %s' % field
     result += '''\n    class Meta:
         db_table = %s''' % table.name
-    result += '\n'
-    print(result)
+    result += '\n\n'
+    return result
 
 def build_class_name(table):
     return ''.join([part.title() for part in table.name.split('_')])
@@ -55,8 +59,9 @@ def build_varchar_field(column):
         
 def main():
     parser = FathomArgumentParser(description=DESCRIPTION)
+    parser.add_argument('-o', '--output', help='print output to a file')
     db, args = parser.parse_args()
-    database2django(db)
+    database2django(db, args)
 
 if __name__ == "__main__":
     main()
