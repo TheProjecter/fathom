@@ -328,7 +328,7 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
                               bitmask)
         
     def _build_trigger_when(self, trigger, bitmask):
-        if bitmask & 2:
+        if bitmask & self._BEFORE_BIT:
             trigger.when = Trigger.BEFORE
         else:
             trigger.when = Trigger.AFTER
