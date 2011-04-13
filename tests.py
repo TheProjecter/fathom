@@ -7,6 +7,7 @@ from collections import namedtuple, OrderedDict
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, get_oracle_database, get_database, 
                     get_database_type, FathomError)
+from fathom.schema import Trigger
 
 try:
     import psycopg2
@@ -102,6 +103,9 @@ CREATE TABLE reference_two_tables (
     TRIGGERS = {
         'before_insert_trigger': '''
 CREATE TRIGGER before_insert_trigger BEFORE INSERT ON one_column
+FOR EACH ROW BEGIN INSERT INTO one_column values(3); END''',
+        'after_delete_trigger': '''
+CREATE TRIGGER after_delete_trigger AFTER DELETE ON one_column
 FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     }
 
@@ -251,6 +255,8 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     def test_trigger_before_insert_trigger(self):
         trigger = self.db.triggers['before_insert_trigger']
         self.assertEqual(trigger.table, 'one_column')
+        self.assertEqual(trigger.when, Trigger.BEFORE)
+        self.assertEqual(trigger.event, Trigger.INSERT)
         
     # other tests
 
@@ -389,6 +395,21 @@ CREATE FUNCTION before_insert_trigger_function() RETURNS trigger AS $$
         END IF;
     END;
 $$ LANGUAGE plpgsql'''
+    PROCEDURES['after_delete_trigger_function()'] = '''
+CREATE FUNCTION after_delete_trigger_function() RETURNS trigger AS $$
+    BEGIN
+        IF NEW.column < 3 THEN
+        END IF;
+    END;
+$$ LANGUAGE plpgsql'''
+    PROCEDURES['before_update_trigger_function()'] = '''
+CREATE FUNCTION before_update_trigger_function() RETURNS trigger AS $$
+    BEGIN
+        IF NEW.column < 3 THEN
+        END IF;
+    END;
+$$ LANGUAGE plpgsql'''
+
 
     # postgresql defines only subset of sql CREATE TRIGGER statement, that's
     # why keep separate dictionary of trigger fixtures and also must keep
@@ -401,6 +422,12 @@ EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_column'),
                 'before_insert_trigger(one_unique_column)': ('''
 CREATE TRIGGER before_insert_trigger BEFORE INSERT ON one_unique_column
 EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_unique_column'),
+                'after_delete_trigger(one_unique_column)': ('''
+CREATE TRIGGER after_delete_trigger AFTER DELETE ON one_unique_column
+EXECUTE PROCEDURE after_delete_trigger_function()''', 'one_unique_column'),
+                'before_update_trigger(one_unique_column)': ('''
+CREATE TRIGGER before_update_trigger BEFORE UPDATE ON one_unique_column
+EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
     }
 
     def setUp(self):
@@ -432,7 +459,21 @@ EXECUTE PROCEDURE before_insert_trigger_function()''', 'one_unique_column'),
     def test_trigger_before_insert_trigger(self):
         trigger = self.db.triggers['before_insert_trigger(one_column)']
         self.assertEqual(trigger.table, 'one_column')
+        self.assertEqual(trigger.when, Trigger.BEFORE)
+        self.assertEqual(trigger.event, Trigger.INSERT)
         
+    def test_trigger_after_delete_trigger(self):
+        trigger = self.db.triggers['after_delete_trigger(one_unique_column)']
+        self.assertEqual(trigger.table, 'one_unique_column')
+        self.assertEqual(trigger.when, Trigger.AFTER)
+        self.assertEqual(trigger.event, Trigger.DELETE)
+
+    def test_trigger_before_update_trigger(self):
+        trigger = self.db.triggers['before_update_trigger(one_unique_column)']
+        self.assertEqual(trigger.table, 'one_unique_column')
+        self.assertEqual(trigger.when, Trigger.BEFORE)
+        self.assertEqual(trigger.event, Trigger.UPDATE)
+                
     # postgresql internal methods required for testing
         
     def index_name(self, table_name, *columns, count=1):
