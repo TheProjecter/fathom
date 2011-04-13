@@ -6,6 +6,10 @@ from .errors import FathomError
 from .schema import (Database, Table, Column, View, Index, Procedure, Argument,
                      Trigger, ForeignKey)
 
+TRIGGER_WHEN_NAMES = {'AFTER': Trigger.AFTER, 'BEFORE': Trigger.BEFORE}
+TRIGGER_EVENT_NAMES = {'INSERT': Trigger.INSERT, 'UPDATE': Trigger.UPDATE,
+                       'DELETE': Trigger.DELETE}
+
 class DatabaseInspector(metaclass=ABCMeta):
     
     '''Abstract base class for database system inspectors.'''
@@ -142,6 +146,22 @@ WHERE type='trigger' AND name = '%s'"""
         if index == -1 or index + 1 == len(sql):
             raise FathomError('Failed to parse CREATE TRIGGER statement.')
         trigger.table = sql[index + 1]
+        self._build_trigger_event(trigger, sql[:index])
+        self._build_trigger_when(trigger, sql[:index])
+        
+    def _build_trigger_event(self, trigger, sql):
+        for part in sql:
+            if part.upper() in TRIGGER_EVENT_NAMES:
+                trigger.event = TRIGGER_EVENT_NAMES[part.upper()]
+                return
+        raise FathomError('Failed to parse CREATE TRIGGER statement.')
+        
+    def _build_trigger_when(self, trigger, sql):
+        for part in sql:
+            if part.upper() in TRIGGER_WHEN_NAMES:
+                trigger.when = TRIGGER_WHEN_NAMES[part.upper()]
+                return
+        raise FathomError('Failed to parse CREATE TRIGGER statement.')
         
     def prepare_column(self, row):
         not_null = bool(row[3])
@@ -179,7 +199,7 @@ FROM pg_views
 WHERE schemaname = 'public'"""
 
     _TRIGGER_NAMES_SQL = """
-SELECT tgname, class.relname, tgrelid
+SELECT tgname, class.relname, tgrelid, tgtype
 FROM pg_catalog.pg_trigger, pg_catalog.pg_class class
 WHERE tgname NOT IN ('pg_sync_pg_database', 'pg_sync_pg_authid', 
                      'pg_sync_pg_auth_members') AND
@@ -288,8 +308,27 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
             name = '%s(%s)' % (row[0], row[1])
             trigger = Trigger(row[0], inspector=self)
             trigger.table = row[1]
+            self._build_trigger_event(trigger, row[3])
+            self._build_trigger_when(trigger, row[3])
             triggers[name] = trigger
         return triggers
+        
+    def _build_trigger_event(self, trigger, bitmask):
+        if bitmask & 4:
+            trigger.event = Trigger.INSERT
+        elif bitmask & 8:
+            trigger.event = Trigger.DELETE
+        elif bitmask & 16:
+            trigger.event = Trigger.UPDATE
+        else:
+            raise FathomError('Unknown bitmask %d in trigger event type.' % 
+                              bitmask)
+        
+    def _build_trigger_when(self, trigger, bitmask):
+        if bitmask & 2:
+            trigger.when = Trigger.BEFORE
+        else:
+            trigger.when = Trigger.AFTER
             
     def prepare_column(self, row):
         # because PostgreSQL keeps varchar type as character varying, we need
@@ -347,7 +386,7 @@ FROM information_schema.routines
 """
 
     _TRIGGER_NAMES_SQL = """
-SELECT trigger_name, event_object_table
+SELECT trigger_name, event_object_table, event_manipulation, action_timing
 FROM information_schema.triggers
 """
 
@@ -424,6 +463,8 @@ WHERE table_name = '%s'
         triggers = {}
         for row in self._select(self._TRIGGER_NAMES_SQL):
             trigger = Trigger(row[0], inspector=self)
+            trigger.when = TRIGGER_WHEN_NAMES[row[3].upper()]
+            trigger.event = TRIGGER_EVENT_NAMES[row[2].upper()]
             trigger.table = row[1]
             triggers[row[0]] = trigger
         return triggers
