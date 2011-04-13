@@ -265,6 +265,9 @@ WHERE contype = 'f' AND confrelid = ref.oid AND conrelid = tab.oid AND
 SELECT column_name
 FROM information_schema.columns
 WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
+
+    _BEFORE_BIT = 2
+    _INSERT_BIT, _DELETE_BIT, _UPDATE_BIT = 4, 8, 16
     
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -314,11 +317,11 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
         return triggers
         
     def _build_trigger_event(self, trigger, bitmask):
-        if bitmask & 4:
+        if bitmask & self._INSERT_BIT:
             trigger.event = Trigger.INSERT
-        elif bitmask & 8:
+        elif bitmask & self._DELETE_BIT:
             trigger.event = Trigger.DELETE
-        elif bitmask & 16:
+        elif bitmask & self._UPDATE_BIT:
             trigger.event = Trigger.UPDATE
         else:
             raise FathomError('Unknown bitmask %d in trigger event type.' % 
