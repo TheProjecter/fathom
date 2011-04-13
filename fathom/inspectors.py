@@ -2,7 +2,7 @@
 
 from abc import ABCMeta, abstractmethod
 
-from .errors import FathomError
+from .errors import FathomError, FathomParsingError
 from .schema import (Database, Table, Column, View, Index, Procedure, Argument,
                      Trigger, ForeignKey)
 
@@ -139,29 +139,29 @@ WHERE type='trigger' AND name = '%s'"""
                              
     def build_trigger(self, trigger):
         sql = self._TRIGGER_SQL % trigger.name
-        sql = self._select(sql)[0][0]
-        sql = sql.replace('\n', ' ').replace('\r', ' ').split(' ')
+        source_sql = self._select(sql)[0][0]
+        sql = source_sql.replace('\n', ' ').replace('\r', ' ').split(' ')
         sql = [part for part in sql if part]
         index = sql.index('ON')
         if index == -1 or index + 1 == len(sql):
-            raise FathomError('Failed to parse CREATE TRIGGER statement.')
+            raise FathomParsingError('CREATE TRIGGER statement', source_sql)
         trigger.table = sql[index + 1]
-        self._build_trigger_event(trigger, sql[:index])
-        self._build_trigger_when(trigger, sql[:index])
+        self._build_trigger_event(trigger, sql[:index], source_sql)
+        self._build_trigger_when(trigger, sql[:index], source_sql)
         
-    def _build_trigger_event(self, trigger, sql):
+    def _build_trigger_event(self, trigger, sql, source_sql):
         for part in sql:
             if part.upper() in TRIGGER_EVENT_NAMES:
                 trigger.event = TRIGGER_EVENT_NAMES[part.upper()]
                 return
-        raise FathomError('Failed to parse CREATE TRIGGER statement.')
+        raise FathomParsingError('CREATE TRIGGER statement', source_sql)
         
-    def _build_trigger_when(self, trigger, sql):
+    def _build_trigger_when(self, trigger, sql, source_sql):
         for part in sql:
             if part.upper() in TRIGGER_WHEN_NAMES:
                 trigger.when = TRIGGER_WHEN_NAMES[part.upper()]
                 return
-        raise FathomError('Failed to parse CREATE TRIGGER statement.')
+        raise FathomParsingError('CREATE TRIGGER statement', source_sql)
         
     def prepare_column(self, row):
         not_null = bool(row[3])
