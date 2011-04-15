@@ -6,7 +6,7 @@ from collections import namedtuple, OrderedDict
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, get_oracle_database, get_database, 
-                    get_database_type, FathomError)
+                    get_database_type, FathomError, find_accessing_procedures)
 from fathom.schema import Trigger
 
 try:
@@ -410,6 +410,14 @@ CREATE FUNCTION before_update_trigger_function() RETURNS trigger AS $$
     END;
 $$ LANGUAGE plpgsql'''
 
+    # tests for get_accessing_procedures
+    
+    PROCEDURES['get_accessing_procedures_1()'] = '''
+CREATE FUNCTION get_accessing_procedures_1() RETURNS VOID AS $$
+    BEGIN
+        SELECT * FROM one_column;
+    END;
+$$ LANGUAGE plpgsql'''
 
     # postgresql defines only subset of sql CREATE TRIGGER statement, that's
     # why keep separate dictionary of trigger fixtures and also must keep
@@ -473,6 +481,13 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
         self.assertEqual(trigger.table, 'one_unique_column')
         self.assertEqual(trigger.when, Trigger.BEFORE)
         self.assertEqual(trigger.event, Trigger.UPDATE)
+        
+    # find_accessing_procedures tests
+    
+    def test_find_accessing_procedures(self):
+        procedures = find_accessing_procedures(self.db.tables['one_column'])
+        names = ['get_accessing_procedures_1()']
+        self.assertEqual(set(procedures), set(names))
                 
     # postgresql internal methods required for testing
         
