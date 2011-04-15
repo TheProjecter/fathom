@@ -225,19 +225,13 @@ WHERE schemaname='public' AND tablename='%s'
 """
 
     _PROCEDURE_NAMES_SQL = """
-SELECT proname, proargtypes, prosrc
+SELECT proname, proargtypes, prosrc, prorettype
 FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
 WHERE pg_language.lanname = 'plpgsql'
 """
 
     _PROCEDURE_ARGUMENTS_SQL = """
 SELECT proargnames, proargtypes
-FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
-WHERE pg_language.lanname = 'plpgsql' AND proname = '%s' AND proargtypes='%s'
-"""
-
-    _PROCEDURE_RETURN_TYPE_SQL = """
-SELECT prorettype
 FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
 WHERE pg_language.lanname = 'plpgsql' AND proname = '%s' AND proargtypes='%s'
 """
@@ -283,10 +277,7 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
         types = self.types_from_oids(oids)
         procedure.arguments = dict((name, Argument(name, type)) 
                                    for name, type in zip(result[0], types))
-        
-        sql = self._PROCEDURE_RETURN_TYPE_SQL % (name, arg_type_oids)
-        oid = self._select(sql)[0][0]
-        procedure.returns = self.types_from_oids([oid])[0]
+
 
     def build_foreign_keys(self, table):
         sql = self._FOREIGN_KEYS_SQL % table.name
@@ -356,6 +347,10 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
             name = '%s()' % row[0]
         procedure = Procedure(name, inspector=self)
         procedure.sql = row[2]
+        if row[3]:
+            return_type = self.types_from_oids([row[3]])[0]
+            if return_type.lower() != 'void':
+                procedure.returns = return_type
         procedure._private['arg_type_oids'] = row[1]
         return name, procedure
         
