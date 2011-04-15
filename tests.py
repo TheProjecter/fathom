@@ -580,7 +580,12 @@ CREATE PROCEDURE simple_proc()
 BEGIN
 END;
 '''
-
+    PROCEDURES['get_accessing_procedures_1()'] = '''
+CREATE PROCEDURE get_accessing_procedures_1()
+    BEGIN
+        SELECT * FROM one_column;
+    END'''
+    
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         args = self.DBNAME, self.USER
@@ -597,6 +602,13 @@ END;
         procedure = self.db.procedures['simple_proc']
         self.assertEqual(procedure.returns, None)
         self.assertEqual(procedure.sql, 'BEGIN\nEND')
+
+    # find_accessing_procedures tests
+    
+    def test_find_accessing_procedures(self):
+        procedures = find_accessing_procedures(self.db.tables['one_column'])
+        names = ['get_accessing_procedures_1']
+        self.assertEqual(set(procedures), set(names))
     
     # mysql internal methods required for testing
 
