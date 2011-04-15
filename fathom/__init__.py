@@ -4,7 +4,7 @@ from .schema import Database
 from .inspectors import (PostgresInspector, SqliteInspector, MySqlInspector,
                          OracleInspector)
 from .errors import FathomError
-from .utils import get_database_type
+from .utils import get_database_type, find_accessing_procedures
 
 def get_sqlite3_database(path):
     return Database(inspector=SqliteInspector(path))

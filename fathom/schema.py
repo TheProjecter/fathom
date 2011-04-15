@@ -28,6 +28,8 @@ class Database(object):
     def _get_tables(self):
         if self._tables is None:
             self._refresh_tables()
+            for table in self._tables.values():
+                table.database = self
         return self._tables
     
     tables = property(_get_tables)

@@ -11,6 +11,10 @@ from .errors import FathomError
 
 class FathomArgumentParser(ArgumentParser):
     
+    '''ArgumentParser which provides subcommand for each supported database
+    type and arguments for connecting to the database. It is supposed to
+    ease building of new tools that are based on fathom library.'''
+    
     def __init__(self, *args, **kwargs):
         ArgumentParser.__init__(self, *args, **kwargs)
         self.add_database_subparsers()
@@ -63,8 +67,11 @@ class FathomArgumentParser(ArgumentParser):
         return get_mysql_database(**kwargs)
 
 
-
 def get_database_type(*args, **kwargs):
+    
+    '''Based on argument that should be passed to the database this function
+    tries to guess the type of the database it should connect to.'''
+    
     if len(args) > 0:
         if _try_postgres(args[0]):
             return 'PostgreSQL'
@@ -117,3 +124,12 @@ def _try_mysql(params):
     except Exception:
         return False
     return True
+
+def find_accessing_procedures(table):
+    
+    '''Provides list with names of procedures that access in some way the given
+    table.'''
+    
+    procedures = table.database.procedures
+    return [procedure.name for procedure in procedures.values()
+                           if table.name.lower() in procedure.sql.lower()]
