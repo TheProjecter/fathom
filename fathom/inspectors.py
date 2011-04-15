@@ -278,7 +278,6 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
         procedure.arguments = dict((name, Argument(name, type)) 
                                    for name, type in zip(result[0], types))
 
-
     def build_foreign_keys(self, table):
         sql = self._FOREIGN_KEYS_SQL % table.name
         rows = self._select(sql)
