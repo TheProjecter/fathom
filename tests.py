@@ -388,6 +388,11 @@ CREATE OR REPLACE FUNCTION fib (fib_for int2) RETURNS integer AS $$
         RETURN fib(fib_for - 2) + fib(fib_for - 1);
     END;
 $$ LANGUAGE plpgsql;'''
+    PROCEDURES['void_function()'] = '''
+CREATE OR REPLACE FUNCTION void_function () RETURNS VOID AS $$
+    BEGIN
+    END;
+$$ LANGUAGE plpgsql;'''
     PROCEDURES['before_insert_trigger_function()'] = '''
 CREATE FUNCTION before_insert_trigger_function() RETURNS trigger AS $$
     BEGIN
@@ -461,6 +466,11 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
         RETURN fib(fib_for - 2) + fib(fib_for - 1);
     END;
 ''')
+
+    def test_void_function(self):
+        procedure = self.db.procedures['void_function()']
+        self.assertArguments(procedure, [])
+        self.assertEqual(procedure.returns, None)
 
     # trigger tests
     

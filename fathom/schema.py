@@ -142,6 +142,7 @@ class Procedure(object):
         super(Procedure, self).__init__()
         self.name = name
         self._arguments = None
+        self.returns = None
         self.inspector = inspector
         # this is a protected dictionary that can be used by inspectors to
         # hold additional data required to operate on schema object
@@ -161,9 +162,9 @@ class Procedure(object):
         
     def _set_arguments(self, arguments):
         self._arguments = arguments
-        
-    arguments = property(_get_arguments, _set_arguments)
 
+    arguments = property(_get_arguments, _set_arguments)
+            
 
 class Trigger(object):
     
