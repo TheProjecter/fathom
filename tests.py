@@ -355,7 +355,12 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
                 try:
                     cursor.execute('DROP FUNCTION %s' % name);
                 except Class.DATABASE_ERRORS as e:
-                    pass # maybe it was not created, we need to try drop other
+                    # maybe it is a PROCEDURE, not a function
+                    try:
+                        cursor.execute('DROP PROCEDURE %s' % name)
+                    except Class.DATABASE_ERRORS as e:
+                        # maybe it was not created, we need to try drop other
+                        pass 
         Class._run_using_cursor(function)        
             
 
@@ -570,6 +575,11 @@ CREATE FUNCTION foo_double (value int4)
     RETURNS INTEGER
         RETURN 2 * value;
 '''
+    PROCEDURES['simple_proc'] = '''
+CREATE PROCEDURE simple_proc()
+BEGIN
+END;
+'''
 
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
@@ -582,6 +592,11 @@ CREATE FUNCTION foo_double (value int4)
         procedure = self.db.procedures['foo_double']
         self.assertEqual(procedure.returns, 'integer')
         self.assertEqual(procedure.sql, 'RETURN 2 * value')
+        
+    def test_simple_proc(self):
+        procedure = self.db.procedures['simple_proc']
+        self.assertEqual(procedure.returns, None)
+        self.assertEqual(procedure.sql, 'BEGIN\nEND')
     
     # mysql internal methods required for testing
 
