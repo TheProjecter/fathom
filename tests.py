@@ -7,7 +7,7 @@ from collections import namedtuple, OrderedDict
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, get_oracle_database, get_database, 
                     get_database_type, FathomError, find_accessing_procedures)
-from fathom.diff import DiffDatabase
+from fathom.diff import DiffDatabase,UNCHANGED,CREATED,ALTERED,DROPPED
 from fathom.schema import Trigger,Table,Database
 
 try:
@@ -55,7 +55,6 @@ class AbstractDatabaseTestCase(metaclass=ABCMeta):
     DEFAULT_INTEGER_TYPE_NAME = 'integer'
     PRIMARY_KEY_IS_NOT_NULL = True
     CREATES_INDEX_FOR_PRIMARY_KEY = True
-    HAS_USABLE_INDEX_NAMES = True
     
     TABLES = OrderedDict((
         ('one_column', '''
@@ -182,12 +181,9 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self.assertEqual(table.columns['col'].type, 
                          self.DEFAULT_INTEGER_TYPE_NAME)
         self.assertEqual(table.columns['col'].not_null, False)
-        if self.HAS_USABLE_INDEX_NAMES:
-            index_names = [self.index_name('one_unique_column', 'col')]
-            self.assertEqual(set(table.indices.keys()), set(index_names))
-            self.assertIndex(table, index_names[0], ('col',))
-        else:
-            self.assertEqual(len(table.indices.keys()), 1)
+        index_names = [self.index_name('one_unique_column', 'col')]
+        self.assertEqual(set(table.indices.keys()), set(index_names))
+        self.assertIndex(table, index_names[0], ('col',))
         
     def test_table_column_with_default(self):
         table = self.db.tables['column_with_default']
@@ -202,30 +198,23 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         values = (('col1', self.DEFAULT_INTEGER_TYPE_NAME, False), 
                   ('col2', 'varchar(80)', False))
         self.assertColumns(table, values)
-        if self.HAS_USABLE_INDEX_NAMES:
-            index_names = [self.index_name('two_columns_unique', 
-                                                'col1', 'col2')]
-            self.assertIndices(table, index_names)
-            self.assertIndex(table, index_names[0], ('col1', 'col2'))
-        else:
-            self.assertEqual(len(table.indices.keys()), 1)
+        index_names = [self.index_name('two_columns_unique', 
+                                            'col1', 'col2')]
+        self.assertIndices(table, index_names)
+        self.assertIndex(table, index_names[0], ('col1', 'col2'))
 
     def test_table_primary_key_only(self):
         table = self.db.tables['primary_key_only']
         values = (('id', self.DEFAULT_INTEGER_TYPE_NAME, 
                    self.PRIMARY_KEY_IS_NOT_NULL),)
         self.assertColumns(table, values)
-        if self.HAS_USABLE_INDEX_NAMES:
-            if self.CREATES_INDEX_FOR_PRIMARY_KEY:
-                index_names = [self.pkey_index_name('primary_key_only', 'id')]
-            else:
-                index_names = []
-            self.assertEqual(set(table.indices.keys()), set(index_names))
-            if self.CREATES_INDEX_FOR_PRIMARY_KEY:
-                self.assertIndex(table, index_names[0], ('id',))
+        if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+            index_names = [self.pkey_index_name('primary_key_only', 'id')]
         else:
-            if self.CREATES_INDEX_FOR_PRIMARY_KEY:
-                self.assertEqual(len(table.indices), 1)
+            index_names = []
+        self.assertEqual(set(table.indices.keys()), set(index_names))
+        if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+            self.assertIndex(table, index_names[0], ('id',))
         
     def test_table_two_double_uniques(self):
         table = self.db.tables['two_double_uniques']
@@ -233,12 +222,9 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
                   ('y', self.DEFAULT_INTEGER_TYPE_NAME, False),
                   ('z', self.DEFAULT_INTEGER_TYPE_NAME, False))
         self.assertColumns(table, values)
-        if self.HAS_USABLE_INDEX_NAMES:
-            index_names = [self.index_name('two_double_uniques', 'x', 'y', 1),
-                           self.index_name('two_double_uniques', 'x', 'z', 2)]
-            self.assertEqual(set(table.indices.keys()), set(index_names))
-        else:
-            self.assertEqual(len(table.indices.keys()), 2)
+        index_names = [self.index_name('two_double_uniques', 'x', 'y', count=1),
+                       self.index_name('two_double_uniques', 'x', 'z', count=2)]
+        self.assertEqual(set(table.indices.keys()), set(index_names))
     
     def test_table_reference_one_unique_column(self):
         table = self.db.tables['reference_one_unique_column']
@@ -654,14 +640,17 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     PASSWORD = 'fathom'
     
     DATABASE_ERRORS = oracle_errors
+    
     DEFAULT_INTEGER_TYPE_NAME = 'number'
-    HAS_USABLE_INDEX_NAMES = False
     
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     # oracle doesn't accept reserved words as identifiers
     TABLES.pop('reserved_word_column')
     TABLES.pop('reference_two_tables')
-
+        
+    INDICES = DatabaseWithProceduresTestCase.INDICES.copy()
+    INDICES.pop('one_column_index')
+    
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
@@ -786,7 +775,11 @@ class DiffDatabaseTestCase(TestCase):
         self.base_db.tables = {self.table1.name: self.table1}
 
         self.more_tables_db = Database(name='more_tables_db')
-        self.more_tables_db = {self.table1.name: self.table1, self.table2.name : self.table2}
+        self.more_tables_db.tables = {self.table1.name: self.table1, self.table2.name : self.table2}
+
+    def assertState(self, table, state):
+        if table.state != state:
+            raise AssertionError("table state is: %d, expecting %d" % (table.state, state))
 
 
     def test_new_table(self): 
@@ -798,8 +791,8 @@ class DiffDatabaseTestCase(TestCase):
         
         unchanged_table = diff_tables[self.table1.name]
         created_table = diff_tables[self.table2.name]
-        self.assertTrue(unchanged_table.state == UNCHANGED)
-        self.assertTrue(created_table.state == CREATED)
+        self.assertState(unchanged_table, UNCHANGED)
+        self.assertState(created_table, CREATED)
 
     def test_dropped_table(self):
         diff = DiffDatabase(self.more_tables_db, self.base_db)
@@ -810,8 +803,8 @@ class DiffDatabaseTestCase(TestCase):
 
         unchanged_table = diff_tables[self.table1.name]
         dropped_table  = diff_tables[self.table2.name]
-        self.assertTrue(unchanged_table.state == UNCHANGED)
-        self.assertTrue(dropped_table.state == DROPPED)
+        self.assertState(unchanged_table, UNCHANGED)
+        self.assertState(dropped_table, DROPPED)
 
     def test_same_tables(self):
         diff = DiffDatabase(self.base_db, self.base_db)
@@ -819,8 +812,9 @@ class DiffDatabaseTestCase(TestCase):
         diff_tables = diff.tables        
         self.assertTrue(self.table1.name in diff_tables)
     
-        unchanged_table = diff_table[self.table1.name]
-        self.assertTrue(unchanged_table.state == UNCHANGED)
+        unchanged_table = diff_tables[self.table1.name]
+        self.assertState(unchanged_table, UNCHANGED)
+
 
 if __name__ == "__main__":
     main()
