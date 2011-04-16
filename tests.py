@@ -640,6 +640,8 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     DATABASE_ERRORS = oracle_errors
     
+    DEFAULT_INTEGER_TYPE_NAME = 'number'
+    
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     # oracle doesn't accept reserved words as identifiers
     TABLES.pop('reserved_word_column')

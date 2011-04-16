@@ -517,7 +517,7 @@ WHERE object_type = 'TRIGGER'
 """
     
     _COLUMN_NAMES_SQL = """
-SELECT column_name
+SELECT lower(column_name), lower(data_type), data_length
 FROM all_tab_columns
 WHERE table_name = upper('%s')
 """
@@ -526,3 +526,10 @@ WHERE table_name = upper('%s')
         DatabaseInspector.__init__(self, *db_params)
         import cx_Oracle
         self._api = cx_Oracle
+        
+    def prepare_column(self, row):
+        if row[1].startswith('varchar'):
+            data_type = 'varchar(%s)' % row[2]
+        else:
+            data_type = row[1]
+        return Column(row[0], data_type)
