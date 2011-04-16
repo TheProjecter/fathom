@@ -539,6 +539,22 @@ SELECT lower(table_name), trigger_type, triggering_event
 FROM user_triggers
 WHERE trigger_name = upper('%s')
 """
+    
+    _FOREIGN_KEY_NAMES_SQL = """
+SELECT lower(first.constraint_name), lower(first.r_constraint_name),
+       lower(second.table_name)
+FROM user_constraints first, user_constraints second
+WHERE first.constraint_type = 'R' AND 
+      first.r_constraint_name = second.constraint_name AND
+      first.table_name = upper('%s')
+"""
+    
+    _FOREIGN_KEY_SQL = """
+SELECT lower(column_name)
+FROM all_cons_columns
+WHERE constraint_name = upper('%s')
+ORDER BY position
+"""
 
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
@@ -565,3 +581,18 @@ WHERE trigger_name = upper('%s')
         when = row[1].split(' ')[0]
         trigger.when = TRIGGER_WHEN_NAMES[when]
         trigger.event = TRIGGER_EVENT_NAMES[row[2]]
+
+    def build_foreign_keys(self, table):
+        sql = self._FOREIGN_KEY_NAMES_SQL % table.name
+        rows = self._select(sql)
+        foreign_keys = {}
+        for row in rows:
+            fk = foreign_keys.setdefault(row[0], ForeignKey())
+            sql = self._FOREIGN_KEY_SQL % row[0]
+            for column_row in self._select(sql):
+                fk.columns.append(column_row[0])
+            sql = self._FOREIGN_KEY_SQL % row[1]
+            for column_row in self._select(sql):
+                fk.referenced_columns.append(column_row[0])
+            fk.referenced_table = row[2]
+        table.foreign_keys = list(foreign_keys.values())
