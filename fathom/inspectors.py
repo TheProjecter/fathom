@@ -515,6 +515,12 @@ SELECT lower(object_name)
 FROM user_objects
 WHERE object_type = 'TRIGGER'
 """
+    
+    _COLUMN_NAMES_SQL = """
+SELECT column_name
+FROM all_tab_columns
+WHERE table_name = upper('%s')
+"""
 
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
