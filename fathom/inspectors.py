@@ -41,6 +41,10 @@ class DatabaseInspector(metaclass=ABCMeta):
         return dict((row[0], Trigger(row[0], inspector=self))
                     for row in self._select(self._TRIGGER_NAMES_SQL))
 
+    def get_procedures(self):
+        return dict(self.prepare_procedure(row)
+                    for row in self._select(self._PROCEDURE_NAMES_SQL))
+
     def get_index_columns(self, index):
         sql = self._INDEX_COLUMNS_SQL % index.name
         return tuple(row[0] for row in self._select(sql))        
@@ -289,10 +293,6 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
             fk.referenced_columns = self.get_table_columns(row[0], row[2])
             foreign_keys.append(fk)
         table.foreign_keys = foreign_keys
-                
-    def get_procedures(self):
-        return dict(self.prepare_procedure(row)
-                    for row in self._select(self._PROCEDURE_NAMES_SQL))
 
     def get_triggers(self):
         '''Returns names of all triggers in the database.'''
@@ -438,11 +438,7 @@ WHERE table_name = '%s'
         except Exception as e:
             print('Warning: failed to obtain MySQL version; assuming 5.0')
             self.version = (5, 0)
-        
-    def get_procedures(self):
-        return dict(self.prepare_procedure(row)
-                    for row in self._select(self._PROCEDURE_NAMES_SQL))
-                    
+
     def prepare_procedure(self, row):
         procedure = Procedure(row[0], inspector=self)
         if row[1] is None:
@@ -518,6 +514,12 @@ SELECT lower(object_name)
 FROM user_objects
 WHERE object_type = 'TRIGGER'
 """
+
+    _PROCEDURE_NAMES_SQL = """
+SELECT lower(object_name) 
+FROM user_objects 
+WHERE object_type = 'PROCEDURE'
+"""
     
     _COLUMN_NAMES_SQL = """
 SELECT lower(column_name), lower(data_type), data_length, data_default, 
@@ -545,3 +547,9 @@ WHERE table_name = upper('%s')
         not_null = (row[4] == 'N')
         default = self.prepare_default(data_type, row[3])                    
         return Column(row[0], data_type, default=default, not_null=not_null)
+        
+    def build_foreign_keys(self, table):
+        table.foreign_keys = []
+        
+    def build_trigger(self, trigger):
+        pass
