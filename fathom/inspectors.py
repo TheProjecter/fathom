@@ -534,6 +534,12 @@ FROM user_indexes
 WHERE table_name = upper('%s')
 """
 
+    _TRIGGER_INFO_SQL = """
+SELECT lower(table_name)
+FROM user_triggers
+WHERE trigger_name = upper('%s')
+"""
+
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
         import cx_Oracle
@@ -552,4 +558,5 @@ WHERE table_name = upper('%s')
         table.foreign_keys = []
         
     def build_trigger(self, trigger):
-        pass
+        sql = self._TRIGGER_INFO_SQL % trigger.name
+        trigger.table = self._select(sql)[0][0]
