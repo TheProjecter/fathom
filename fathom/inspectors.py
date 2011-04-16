@@ -520,7 +520,8 @@ WHERE object_type = 'TRIGGER'
 """
     
     _COLUMN_NAMES_SQL = """
-SELECT lower(column_name), lower(data_type), data_length, data_default
+SELECT lower(column_name), lower(data_type), data_length, data_default, 
+       upper(nullable)
 FROM all_tab_columns
 WHERE table_name = upper('%s')
 """
@@ -541,5 +542,6 @@ WHERE table_name = upper('%s')
             data_type = 'varchar(%s)' % row[2]
         else:
             data_type = row[1]
+        not_null = (row[4] == 'N')
         default = self.prepare_default(data_type, row[3])                    
-        return Column(row[0], data_type, default=default)
+        return Column(row[0], data_type, default=default, not_null=not_null)
