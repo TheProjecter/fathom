@@ -55,6 +55,7 @@ class AbstractDatabaseTestCase(metaclass=ABCMeta):
     DEFAULT_INTEGER_TYPE_NAME = 'integer'
     PRIMARY_KEY_IS_NOT_NULL = True
     CREATES_INDEX_FOR_PRIMARY_KEY = True
+    HAS_USABLE_INDEX_NAMES = True
     
     TABLES = OrderedDict((
         ('one_column', '''
@@ -181,9 +182,12 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self.assertEqual(table.columns['col'].type, 
                          self.DEFAULT_INTEGER_TYPE_NAME)
         self.assertEqual(table.columns['col'].not_null, False)
-        index_names = [self.index_name('one_unique_column', 'col')]
-        self.assertEqual(set(table.indices.keys()), set(index_names))
-        self.assertIndex(table, index_names[0], ('col',))
+        if self.HAS_USABLE_INDEX_NAMES:
+            index_names = [self.index_name('one_unique_column', 'col')]
+            self.assertEqual(set(table.indices.keys()), set(index_names))
+            self.assertIndex(table, index_names[0], ('col',))
+        else:
+            self.assertEqual(len(table.indices.keys()), 1)
         
     def test_table_column_with_default(self):
         table = self.db.tables['column_with_default']
@@ -198,10 +202,13 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         values = (('col1', self.DEFAULT_INTEGER_TYPE_NAME, False), 
                   ('col2', 'varchar(80)', False))
         self.assertColumns(table, values)
-        index_names = [self.index_name('two_columns_unique', 
-                                            'col1', 'col2')]
-        self.assertIndices(table, index_names)
-        self.assertIndex(table, index_names[0], ('col1', 'col2'))
+        if self.HAS_USABLE_INDEX_NAMES:
+            index_names = [self.index_name('two_columns_unique', 
+                                                'col1', 'col2')]
+            self.assertIndices(table, index_names)
+            self.assertIndex(table, index_names[0], ('col1', 'col2'))
+        else:
+            self.assertEqual(len(table.indices.keys()), 1)
 
     def test_table_primary_key_only(self):
         table = self.db.tables['primary_key_only']
@@ -640,8 +647,8 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     PASSWORD = 'fathom'
     
     DATABASE_ERRORS = oracle_errors
-    
     DEFAULT_INTEGER_TYPE_NAME = 'number'
+    HAS_USABLE_INDEX_NAMES = False
     
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     # oracle doesn't accept reserved words as identifiers
