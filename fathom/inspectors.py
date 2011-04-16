@@ -51,7 +51,7 @@ class DatabaseInspector(metaclass=ABCMeta):
                                      for row in self._select(sql))
 
     def build_indices(self, table):
-        sql = self._TABLE_INDICE_NAMES_SQL % table.name
+        sql = self._TABLE_INDEX_NAMES_SQL % table.name
         table.indices = dict((row[0], Index(row[0], inspector=self)) 
                              for row in self._select(sql))
                              
@@ -100,7 +100,7 @@ WHERE type = 'trigger'"""
     
     _COLUMN_NAMES_SQL = """pragma table_info(%s)"""
     
-    _TABLE_INDICE_NAMES_SQL = """pragma index_list(%s)"""
+    _TABLE_INDEX_NAMES_SQL = """pragma index_list(%s)"""
     
     _INDEX_COLUMNS_SQL = """pragma index_info(%s)"""
     
@@ -133,7 +133,7 @@ WHERE type='trigger' AND name = '%s'"""
                                      for row in self._select(sql))
                                      
     def build_indices(self, table):
-        sql = self._TABLE_INDICE_NAMES_SQL % table.name
+        sql = self._TABLE_INDEX_NAMES_SQL % table.name
         table.indices = dict((row[1], Index(row[1], inspector=self))
                              for row in self._select(sql))
                              
@@ -218,7 +218,7 @@ SELECT indexname
 FROM pg_indexes
 WHERE schemaname = 'public'"""
 
-    _TABLE_INDICE_NAMES_SQL = """
+    _TABLE_INDEX_NAMES_SQL = """
 SELECT indexname 
 FROM pg_indexes 
 WHERE schemaname='public' AND tablename='%s'
@@ -394,7 +394,7 @@ FROM information_schema.columns
 WHERE table_name = '%s'
 """
 
-    _TABLE_INDICE_NAMES_SQL = """
+    _TABLE_INDEX_NAMES_SQL = """
 SELECT index_name 
 FROM information_schema.statistics
 WHERE table_name = '%s'
@@ -498,6 +498,9 @@ WHERE table_name = '%s'
 
 class OracleInspector(DatabaseInspector):
 
+    INTEGER_TYPES = ('number',)
+    FLOAT_TYPES = ('float',)
+
     _TABLE_NAMES_SQL = """
 SELECT lower(object_name)
 FROM user_objects 
@@ -517,8 +520,14 @@ WHERE object_type = 'TRIGGER'
 """
     
     _COLUMN_NAMES_SQL = """
-SELECT lower(column_name), lower(data_type), data_length
+SELECT lower(column_name), lower(data_type), data_length, data_default
 FROM all_tab_columns
+WHERE table_name = upper('%s')
+"""
+    
+    _TABLE_INDEX_NAMES_SQL = """
+SELECT index_name
+FROM dba_indexes
 WHERE table_name = upper('%s')
 """
 
@@ -532,4 +541,5 @@ WHERE table_name = upper('%s')
             data_type = 'varchar(%s)' % row[2]
         else:
             data_type = row[1]
-        return Column(row[0], data_type)
+        default = self.prepare_default(data_type, row[3])                    
+        return Column(row[0], data_type, default=default)
