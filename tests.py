@@ -7,7 +7,7 @@ from collections import namedtuple, OrderedDict
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, get_oracle_database, get_database, 
                     get_database_type, FathomError, find_accessing_procedures)
-from fathom.diff import DiffDatabase
+from fathom.diff import DiffDatabase, UNCHANGED, CREATED, ALTERED, DROPPED
 from fathom.schema import Trigger,Table,Database
 
 try:
@@ -89,7 +89,7 @@ CREATE TABLE reference_one_unique_column (
 )'''),
     ('reference_two_tables', '''
 CREATE TABLE reference_two_tables (
-    ref1 integer REFERENCES one_unique_column("column"),
+    ref1 integer REFERENCES one_unique_column(col),
     ref2 integer REFERENCES primary_key_only(id)
 )''')
 ))
@@ -234,8 +234,10 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
                   ('z', self.DEFAULT_INTEGER_TYPE_NAME, False))
         self.assertColumns(table, values)
         if self.HAS_USABLE_INDEX_NAMES:
-            index_names = [self.index_name('two_double_uniques', 'x', 'y', 1),
-                           self.index_name('two_double_uniques', 'x', 'z', 2)]
+            index_names = [self.index_name('two_double_uniques', 'x', 'y', 
+                                           count=1),
+                           self.index_name('two_double_uniques', 'x', 'z', 
+                                           count=2)]
             self.assertEqual(set(table.indices.keys()), set(index_names))
         else:
             self.assertEqual(len(table.indices.keys()), 2)
@@ -246,7 +248,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         fk = table.foreign_keys[0]
         self.assertEqual(fk.columns, ['ref_one_column',])
         self.assertEqual(fk.referenced_table, 'one_unique_column')
-        self.assertEqual(fk.referenced_columns, ['column',])
+        self.assertEqual(fk.referenced_columns, ['col',])
         
     def test_table_reference_two_tables(self):
         table = self.db.tables['reference_two_tables']
@@ -566,20 +568,20 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
 
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     TABLES['one_unique_column'] = '''
-CREATE TABLE one_unique_column ("column" integer UNIQUE) ENGINE = INNODB'''
+CREATE TABLE one_unique_column (col integer UNIQUE) ENGINE = INNODB'''
     TABLES['primary_key_only'] = '''
 CREATE TABLE primary_key_only (id integer primary key) ENGINE = INNODB
 '''
     TABLES['reference_one_unique_column'] = '''
 CREATE TABLE reference_one_unique_column (
     ref_one_column integer,
-    FOREIGN KEY (ref_one_column) REFERENCES one_unique_column("column")
+    FOREIGN KEY (ref_one_column) REFERENCES one_unique_column(col)
 ) ENGINE = INNODB'''
     TABLES['reference_two_tables'] = '''
 CREATE TABLE reference_two_tables (
     ref1 integer,
     ref2 integer,
-    FOREIGN KEY (ref1) REFERENCES one_unique_column("column"),
+    FOREIGN KEY (ref1) REFERENCES one_unique_column(col),
     FOREIGN KEY (ref2) REFERENCES primary_key_only(id)
 ) ENGINE = INNODB'''
 
@@ -595,7 +597,7 @@ CREATE PROCEDURE simple_proc()
 BEGIN
 END;
 '''
-    PROCEDURES['get_accessing_procedures_1()'] = '''
+    PROCEDURES['get_accessing_procedures_1'] = '''
 CREATE PROCEDURE get_accessing_procedures_1()
     BEGIN
         SELECT * FROM one_column;
@@ -660,7 +662,7 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     # oracle doesn't accept reserved words as identifiers
     TABLES.pop('reserved_word_column')
-    TABLES.pop('reference_two_tables')
+    # TABLES.pop('reference_two_tables')
 
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
