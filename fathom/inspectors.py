@@ -41,6 +41,10 @@ class DatabaseInspector(metaclass=ABCMeta):
         return dict((row[0], Trigger(row[0], inspector=self))
                     for row in self._select(self._TRIGGER_NAMES_SQL))
 
+    def get_procedures(self):
+        return dict(self.prepare_procedure(row)
+                    for row in self._select(self._PROCEDURE_NAMES_SQL))
+
     def get_index_columns(self, index):
         sql = self._INDEX_COLUMNS_SQL % index.name
         return tuple(row[0] for row in self._select(sql))        
@@ -51,7 +55,7 @@ class DatabaseInspector(metaclass=ABCMeta):
                                      for row in self._select(sql))
 
     def build_indices(self, table):
-        sql = self._TABLE_INDICE_NAMES_SQL % table.name
+        sql = self._TABLE_INDEX_NAMES_SQL % table.name
         table.indices = dict((row[0], Index(row[0], inspector=self)) 
                              for row in self._select(sql))
                              
@@ -100,7 +104,7 @@ WHERE type = 'trigger'"""
     
     _COLUMN_NAMES_SQL = """pragma table_info(%s)"""
     
-    _TABLE_INDICE_NAMES_SQL = """pragma index_list(%s)"""
+    _TABLE_INDEX_NAMES_SQL = """pragma index_list(%s)"""
     
     _INDEX_COLUMNS_SQL = """pragma index_info(%s)"""
     
@@ -133,7 +137,7 @@ WHERE type='trigger' AND name = '%s'"""
                                      for row in self._select(sql))
                                      
     def build_indices(self, table):
-        sql = self._TABLE_INDICE_NAMES_SQL % table.name
+        sql = self._TABLE_INDEX_NAMES_SQL % table.name
         table.indices = dict((row[1], Index(row[1], inspector=self))
                              for row in self._select(sql))
                              
@@ -218,7 +222,7 @@ SELECT indexname
 FROM pg_indexes
 WHERE schemaname = 'public'"""
 
-    _TABLE_INDICE_NAMES_SQL = """
+    _TABLE_INDEX_NAMES_SQL = """
 SELECT indexname 
 FROM pg_indexes 
 WHERE schemaname='public' AND tablename='%s'
@@ -289,10 +293,6 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
             fk.referenced_columns = self.get_table_columns(row[0], row[2])
             foreign_keys.append(fk)
         table.foreign_keys = foreign_keys
-                
-    def get_procedures(self):
-        return dict(self.prepare_procedure(row)
-                    for row in self._select(self._PROCEDURE_NAMES_SQL))
 
     def get_triggers(self):
         '''Returns names of all triggers in the database.'''
@@ -394,7 +394,7 @@ FROM information_schema.columns
 WHERE table_name = '%s'
 """
 
-    _TABLE_INDICE_NAMES_SQL = """
+    _TABLE_INDEX_NAMES_SQL = """
 SELECT index_name 
 FROM information_schema.statistics
 WHERE table_name = '%s'
@@ -438,11 +438,7 @@ WHERE table_name = '%s'
         except Exception as e:
             print('Warning: failed to obtain MySQL version; assuming 5.0')
             self.version = (5, 0)
-        
-    def get_procedures(self):
-        return dict(self.prepare_procedure(row)
-                    for row in self._select(self._PROCEDURE_NAMES_SQL))
-                    
+
     def prepare_procedure(self, row):
         procedure = Procedure(row[0], inspector=self)
         if row[1] is None:
@@ -498,6 +494,9 @@ WHERE table_name = '%s'
 
 class OracleInspector(DatabaseInspector):
 
+    INTEGER_TYPES = ('number',)
+    FLOAT_TYPES = ('float',)
+
     _TABLE_NAMES_SQL = """
 SELECT lower(object_name)
 FROM user_objects 
@@ -516,7 +515,48 @@ FROM user_objects
 WHERE object_type = 'TRIGGER'
 """
 
+    _PROCEDURE_NAMES_SQL = """
+SELECT lower(object_name) 
+FROM user_objects 
+WHERE object_type = 'PROCEDURE'
+"""
+    
+    _COLUMN_NAMES_SQL = """
+SELECT lower(column_name), lower(data_type), data_length, data_default, 
+       upper(nullable)
+FROM all_tab_columns
+WHERE table_name = upper('%s')
+"""
+    
+    _TABLE_INDEX_NAMES_SQL = """
+SELECT index_name
+FROM user_indexes
+WHERE table_name = upper('%s')
+"""
+
+    _TRIGGER_INFO_SQL = """
+SELECT lower(table_name)
+FROM user_triggers
+WHERE trigger_name = upper('%s')
+"""
+
     def __init__(self, *db_params):
         DatabaseInspector.__init__(self, *db_params)
         import cx_Oracle
         self._api = cx_Oracle
+        
+    def prepare_column(self, row):
+        if row[1].startswith('varchar'):
+            data_type = 'varchar(%s)' % row[2]
+        else:
+            data_type = row[1]
+        not_null = (row[4] == 'N')
+        default = self.prepare_default(data_type, row[3])                    
+        return Column(row[0], data_type, default=default, not_null=not_null)
+        
+    def build_foreign_keys(self, table):
+        table.foreign_keys = []
+        
+    def build_trigger(self, trigger):
+        sql = self._TRIGGER_INFO_SQL % trigger.name
+        trigger.table = self._select(sql)[0][0]
