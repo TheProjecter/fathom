@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 class Database(object):
     
@@ -31,8 +31,13 @@ class Database(object):
             for table in self._tables.values():
                 table.database = self
         return self._tables
+
+    def _set_tables(self, tables):
+        assert self.inspector is None, "Cannot set tables on already inspected database"
+        self._tables = tables
+	 
     
-    tables = property(_get_tables)
+    tables = property(_get_tables, _set_tables)
     
     _refresh_views = get_refresh_method('views')
     

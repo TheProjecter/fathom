@@ -7,7 +7,8 @@ from collections import namedtuple, OrderedDict
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, get_oracle_database, get_database, 
                     get_database_type, FathomError, find_accessing_procedures)
-from fathom.schema import Trigger
+from fathom.diff import DiffDatabase
+from fathom.schema import Trigger,Table,Database
 
 try:
     import psycopg2
@@ -760,6 +761,61 @@ class DatabaseTypeTestCase(TestCase):
                           db='non_existing_database')
         self.assertRaises(FathomError, get_database_type, 
                           'dbname=not_existing_database user=fathom')
+
+class DiffDatabaseTestCase(TestCase):
+
+    def setUp(self):
+
+        self.table1 = Table('table_1')
+        self.table2 = Table('table_2')
+
+
+        self.base_db = Database(name='base')
+
+        self.base_db.tables = {self.table1.name: self.table1}
+
+        self.more_tables_db = Database(name='more_tables_db')
+        self.more_tables_db = {self.table1.name: self.table1, self.table2.name : self.table2}
+
+
+    def test_new_table(self): 
+        diff = DiffDatabase(self.base_db, self.more_tables_db)
+        
+        diff_tables = diff.tables
+        self.assertTrue(self.table1.name in diff_tables)
+        self.assertTrue(self.table2.name in diff_tables)
+        
+        unchanged_table = diff_tables[self.table1.name]
+        created_table = diff_tables[self.table2.name]
+        self.assertTrue(unchanged_table.state == UNCHANGED)
+        self.assertTrue(created_table.state == CREATED)
+
+    def test_dropped_table(self):
+        diff = DiffDatabase(self.more_tables_db, self.base_db)
+        
+        diff_tables = diff.tables
+        self.assertTrue(self.table1.name in diff_tables)
+        self.assertTrue(self.table2.name in diff_tables)
+
+        unchanged_table = diff_tables[self.table1.name]
+        dropped_table  = diff_tables[self.table2.name]
+        self.assertTrue(unchanged_table.state == UNCHANGED)
+        self.assertTrue(dropped_table.state == DROPPED)
+
+    def test_same_tables(self):
+        diff = DiffDatabase(self.base_db, self.base_db)
+    
+        diff_tables = diff.tables        
+        self.assertTrue(self.table1.name in diff_tables)
+    
+        unchanged_table = diff_table[self.table1.name]
+        self.assertTrue(unchanged_table.state == UNCHANGED)
+    
+
+
+
+       
+
 
 if __name__ == "__main__":
     main()
