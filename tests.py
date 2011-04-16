@@ -215,13 +215,17 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         values = (('id', self.DEFAULT_INTEGER_TYPE_NAME, 
                    self.PRIMARY_KEY_IS_NOT_NULL),)
         self.assertColumns(table, values)
-        if self.CREATES_INDEX_FOR_PRIMARY_KEY:
-            index_names = [self.pkey_index_name('primary_key_only', 'id')]
+        if self.HAS_USABLE_INDEX_NAMES:
+            if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+                index_names = [self.pkey_index_name('primary_key_only', 'id')]
+            else:
+                index_names = []
+            self.assertEqual(set(table.indices.keys()), set(index_names))
+            if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+                self.assertIndex(table, index_names[0], ('id',))
         else:
-            index_names = []
-        self.assertEqual(set(table.indices.keys()), set(index_names))
-        if self.CREATES_INDEX_FOR_PRIMARY_KEY:
-            self.assertIndex(table, index_names[0], ('id',))
+            if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+                self.assertEqual(len(table.indices), 1)
         
     def test_table_two_double_uniques(self):
         table = self.db.tables['two_double_uniques']
@@ -229,9 +233,12 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
                   ('y', self.DEFAULT_INTEGER_TYPE_NAME, False),
                   ('z', self.DEFAULT_INTEGER_TYPE_NAME, False))
         self.assertColumns(table, values)
-        index_names = [self.index_name('two_double_uniques', 'x', 'y', count=1),
-                       self.index_name('two_double_uniques', 'x', 'z', count=2)]
-        self.assertEqual(set(table.indices.keys()), set(index_names))
+        if self.HAS_USABLE_INDEX_NAMES:
+            index_names = [self.index_name('two_double_uniques', 'x', 'y', 1),
+                           self.index_name('two_double_uniques', 'x', 'z', 2)]
+            self.assertEqual(set(table.indices.keys()), set(index_names))
+        else:
+            self.assertEqual(len(table.indices.keys()), 2)
     
     def test_table_reference_one_unique_column(self):
         table = self.db.tables['reference_one_unique_column']
