@@ -647,10 +647,7 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     # oracle doesn't accept reserved words as identifiers
     TABLES.pop('reserved_word_column')
     TABLES.pop('reference_two_tables')
-        
-    INDICES = DatabaseWithProceduresTestCase.INDICES.copy()
-    INDICES.pop('one_column_index')
-    
+
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
@@ -810,12 +807,6 @@ class DiffDatabaseTestCase(TestCase):
     
         unchanged_table = diff_table[self.table1.name]
         self.assertTrue(unchanged_table.state == UNCHANGED)
-    
-
-
-
-       
-
 
 if __name__ == "__main__":
     main()

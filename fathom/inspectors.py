@@ -529,13 +529,13 @@ WHERE table_name = upper('%s')
 """
     
     _TABLE_INDEX_NAMES_SQL = """
-SELECT index_name
+SELECT lower(index_name)
 FROM user_indexes
 WHERE table_name = upper('%s')
 """
 
     _TRIGGER_INFO_SQL = """
-SELECT lower(table_name)
+SELECT lower(table_name), trigger_type, triggering_event
 FROM user_triggers
 WHERE trigger_name = upper('%s')
 """
@@ -559,4 +559,9 @@ WHERE trigger_name = upper('%s')
         
     def build_trigger(self, trigger):
         sql = self._TRIGGER_INFO_SQL % trigger.name
-        trigger.table = self._select(sql)[0][0]
+        row = self._select(sql)[0]
+        trigger.table = row[0]
+        # should return something like BEFORE EACH ROW, we need first word
+        when = row[1].split(' ')[0]
+        trigger.when = TRIGGER_WHEN_NAMES[when]
+        trigger.event = TRIGGER_EVENT_NAMES[row[2]]
