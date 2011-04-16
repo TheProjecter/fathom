@@ -1,5 +1,32 @@
 #!/usr/bin/python3
 
+'''
+Preparing environment for running tests
+
+Every DBMS requires some kind of environment to be set up, in order to run
+the test suite. Here is a short description of necessary steps to setup every
+environment.
+
+1. Sqlite - No step are required. Test suite will create fathom.db file in
+the current directory on wihch all operations are performed.
+
+2. PostgreSQL - Beside having PostgreSQL server installed and running, you 
+need to create database named 'fathom' and user named 'fathom'. You also need
+to edit pg_hba.conf, so it will allow 'fathom' to access 'fathom' database
+without a password; this requires using 'trust' setting. To access this DBMS
+from Python you need to have psycopg2 installed for python3.
+
+3. MySQL - Beside having MySQL server installed and running, you need to
+create database named 'fathom' and user named 'fathom'. Furthermore you need to
+grant him all privilages required to access all kinds of objects in 'fathom'
+database and possibly information_schema tables. To access this DBMS from
+Python you need to have pymysql3 package installed for python3.
+
+4. Oracle - Beside having Oracle server installed and running you need to
+create user named 'fathom' with password 'fathom'. To access this DBMS from
+Python you need to have cx_Oracle package installed for python3.
+'''
+
 from abc import ABCMeta, abstractmethod
 from unittest import TestCase, main, skipUnless
 from collections import namedtuple, OrderedDict
