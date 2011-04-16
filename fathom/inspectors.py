@@ -528,7 +528,7 @@ WHERE table_name = upper('%s')
     
     _TABLE_INDEX_NAMES_SQL = """
 SELECT index_name
-FROM dba_indexes
+FROM user_indexes
 WHERE table_name = upper('%s')
 """
 
