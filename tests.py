@@ -61,7 +61,7 @@ CREATE TABLE one_column (col varchar(800))'''),
         ('reserved_word_column', '''
 CREATE TABLE reserved_word_column ("column" varchar(800))'''),
         ('one_unique_column', '''
-CREATE TABLE one_unique_column ("column" integer UNIQUE)'''),
+CREATE TABLE one_unique_column (col integer UNIQUE)'''),
         ('column_with_default', '''
 CREATE TABLE column_with_default (def_col integer default 5)'''),
         ('two_columns_unique', '''
@@ -83,7 +83,7 @@ CREATE TABLE two_double_uniques (
 )'''),
     ('reference_one_unique_column', '''
 CREATE TABLE reference_one_unique_column (
-    ref_one_column integer REFERENCES one_unique_column("column")
+    ref_one_column integer REFERENCES one_unique_column(col)
 )'''),
     ('reference_two_tables', '''
 CREATE TABLE reference_two_tables (
@@ -176,13 +176,13 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         
     def test_table_one_unique_column(self):
         table = self.db.tables['one_unique_column']
-        self.assertEqual(set(table.columns.keys()), set(['column']))
-        self.assertEqual(table.columns['column'].type, 
+        self.assertEqual(set(table.columns.keys()), set(['col']))
+        self.assertEqual(table.columns['col'].type, 
                          self.DEFAULT_INTEGER_TYPE_NAME)
-        self.assertEqual(table.columns['column'].not_null, False)
-        index_names = [self.index_name('one_unique_column', 'column')]
+        self.assertEqual(table.columns['col'].not_null, False)
+        index_names = [self.index_name('one_unique_column', 'col')]
         self.assertEqual(set(table.indices.keys()), set(index_names))
-        self.assertIndex(table, index_names[0], ('column',))
+        self.assertIndex(table, index_names[0], ('col',))
         
     def test_table_column_with_default(self):
         table = self.db.tables['column_with_default']
@@ -645,8 +645,6 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     # oracle doesn't accept reserved words as identifiers
     TABLES.pop('reserved_word_column')
-    TABLES.pop('one_unique_column')
-    TABLES.pop('reference_one_unique_column')
     TABLES.pop('reference_two_tables')
         
     INDICES = DatabaseWithProceduresTestCase.INDICES.copy()
