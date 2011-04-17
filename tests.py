@@ -34,7 +34,7 @@ from collections import namedtuple, OrderedDict
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, get_oracle_database, get_database, 
                     get_database_type, FathomError, find_accessing_procedures)
-from fathom.diff import DiffDatabase, UNCHANGED, CREATED, ALTERED, DROPPED
+from fathom.diff import DatabaseDiff, UNCHANGED, CREATED, ALTERED, DROPPED
 from fathom.schema import Trigger,Table,Database
 
 try:
@@ -802,7 +802,7 @@ class DatabaseTypeTestCase(TestCase):
         self.assertRaises(FathomError, get_database_type, 
                           'dbname=not_existing_database user=fathom')
 
-class DiffDatabaseTestCase(TestCase):
+class DatabaseDiffTestCase(TestCase):
 
     def setUp(self):
 
@@ -823,7 +823,7 @@ class DiffDatabaseTestCase(TestCase):
 
 
     def test_new_table(self): 
-        diff = DiffDatabase(self.base_db, self.more_tables_db)
+        diff = DatabaseDiff(self.base_db, self.more_tables_db)
         
         diff_tables = diff.tables
         self.assertTrue(self.table1.name in diff_tables)
@@ -835,7 +835,7 @@ class DiffDatabaseTestCase(TestCase):
         self.assertState(created_table, CREATED)
 
     def test_dropped_table(self):
-        diff = DiffDatabase(self.more_tables_db, self.base_db)
+        diff = DatabaseDiff(self.more_tables_db, self.base_db)
         
         diff_tables = diff.tables
         self.assertTrue(self.table1.name in diff_tables)
@@ -847,7 +847,7 @@ class DiffDatabaseTestCase(TestCase):
         self.assertState(dropped_table, DROPPED)
 
     def test_same_tables(self):
-        diff = DiffDatabase(self.base_db, self.base_db)
+        diff = DatabaseDiff(self.base_db, self.base_db)
     
         diff_tables = diff.tables        
         self.assertTrue(self.table1.name in diff_tables)

@@ -2,10 +2,10 @@
 
 UNCHANGED, CREATED, ALTERED, DROPPED = range(4)
 
-class DiffTable(object):
+class TableDiff(object):
    
     def __init__(self, name, source_table=None, dest_table=None):
-        super(DiffTable, self).__init__()
+        super(TableDiff, self).__init__()
         self.name = name
         self.source_table = source_table
         self.dest_table = dest_table
@@ -25,10 +25,10 @@ class DiffTable(object):
 
 
 
-class DiffDatabase(object):
+class DatabaseDiff(object):
 
     def __init__(self, db1, db2):
-        super(DiffDatabase, self).__init__()
+        super(DatabaseDiff, self).__init__()
         if db1 is None or db2 is None:
             raise ValueError
 
@@ -51,15 +51,15 @@ class DiffDatabase(object):
         
         same_tables = source_tables_names & dest_tables_names
         for name in same_tables:
-            matching[name] = DiffTable(name=name, 
+            matching[name] = TableDiff(name=name, 
                                        source_table=source_tables[name], dest_table=dest_tables[name])
         only_in_source = source_tables_names - dest_tables_names
         for name in only_in_source:
-            matching[name] = DiffTable(name=name,
+            matching[name] = TableDiff(name=name,
                                        source_table=source_tables[name], dest_table=None)
         only_in_dest = dest_tables_names - source_tables_names
         for name in only_in_dest:
-            matching[name] = DiffTable(name=name,
+            matching[name] = TableDiff(name=name,
                                        source_table=None, dest_table=dest_tables[name])
         return matching
 
