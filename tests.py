@@ -883,7 +883,36 @@ class DatabaseDiffTestCase(TestCase):
         self.assertState(diff_tables[table_name].columns['col_1'],UNCHANGED)
         self.assertTrue('col_2' in diff_tables[table_name].columns)
         self.assertState(diff_tables[table_name].columns['col_2'],CREATED)
+
+    def test_remove_columns(self):
+        col_1 = Column('col_1', 'varchar(10)')
+        col_2 = Column('col_2', 'varchar(10)')
+
+        table_name = 'table_1'
+
+        base_table = Table(table_name)
+        base_table.columns = {'col_1': col_1}
+          
+        more_columns_table = Table(table_name)
+        more_columns_table = {'col_1': col_1, 'col_2': col_2}
+
+        source_db = Database(name='base')
+        source_db.tables = {table_name : more_columns_table}
+
+        dest_db = Database(name='dest')
+        dest_db.tables = {table_name: base_table}
+
+        diff = DatabaseDiff(source_db, dest_db)
+        diff_tables = diff.tables
         
+        self.assertTrue(table_name in diff_tables)
+        self.assertState(diff_tables[table_name],ALTERED)
+        self.assertTrue('col_1' in diff_tables[table_name].columns)
+        self.assertState(diff_tables[table_name].columns['col_1'],UNCHANGED)
+        self.assertTrue('col_2' in diff_tables[table_name].columns)
+        self.assertState(diff_tables[table_name].columns['col_2'],DROPPED)
+
+         
         
 
 
