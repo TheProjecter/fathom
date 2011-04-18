@@ -35,7 +35,7 @@ from fathom import (get_sqlite3_database, get_postgresql_database,
                     get_mysql_database, get_oracle_database, get_database, 
                     get_database_type, FathomError, find_accessing_procedures)
 from fathom.diff import DatabaseDiff, UNCHANGED, CREATED, ALTERED, DROPPED
-from fathom.schema import Trigger,Table,Database
+from fathom.schema import Trigger,Table,Column,Database
 
 try:
     import psycopg2
@@ -807,7 +807,9 @@ class DatabaseDiffTestCase(TestCase):
     def setUp(self):
 
         self.table1 = Table('table_1')
+        self.table1.columns = {}
         self.table2 = Table('table_2')
+        self.table2.columns = {}
 
 
         self.base_db = Database(name='base')
@@ -817,9 +819,9 @@ class DatabaseDiffTestCase(TestCase):
         self.more_tables_db = Database(name='more_tables_db')
         self.more_tables_db.tables = {self.table1.name: self.table1, self.table2.name : self.table2}
 
-    def assertState(self, table, state):
-        if table.state != state:
-            raise AssertionError("table state is: %d, expecting %d" % (table.state, state))
+    def assertState(self, item, state):
+        if item.state != state:
+            raise AssertionError("item state is: %d, expecting %d" % (item.state, state))
 
 
     def test_new_table(self): 
@@ -854,6 +856,67 @@ class DatabaseDiffTestCase(TestCase):
     
         unchanged_table = diff_tables[self.table1.name]
         self.assertState(unchanged_table, UNCHANGED)
+
+    
+    def test_new_columns(self):
+        col_1 = Column('col_1', 'varchar(10)')
+        col_2 = Column('col_2', 'varchar(10)')
+
+        table_name = 'table_1'
+
+        base_table = Table(table_name)
+        base_table.columns = {'col_1': col_1}
+          
+        more_columns_table = Table(table_name)
+        more_columns_table.columns = {'col_1': col_1, 'col_2': col_2}
+
+        source_db = Database(name='base')
+        source_db.tables = {table_name : base_table}
+
+        dest_db = Database(name='dest')
+        dest_db.tables = {table_name: more_columns_table}
+
+        diff = DatabaseDiff(source_db, dest_db)
+        diff_tables = diff.tables
+        
+        self.assertTrue(table_name in diff_tables)
+        self.assertState(diff_tables[table_name],ALTERED)
+        self.assertTrue('col_1' in diff_tables[table_name].columns)
+        self.assertState(diff_tables[table_name].columns['col_1'],UNCHANGED)
+        self.assertTrue('col_2' in diff_tables[table_name].columns)
+        self.assertState(diff_tables[table_name].columns['col_2'],CREATED)
+
+    def test_remove_columns(self):
+        col_1 = Column('col_1', 'varchar(10)')
+        col_2 = Column('col_2', 'varchar(10)')
+
+        table_name = 'table_1'
+
+        base_table = Table(table_name)
+        base_table.columns = {'col_1': col_1}
+          
+        more_columns_table = Table(table_name)
+        more_columns_table.columns = {'col_1': col_1, 'col_2': col_2}
+
+        source_db = Database(name='base')
+        source_db.tables = {table_name : more_columns_table}
+
+        dest_db = Database(name='dest')
+        dest_db.tables = {table_name: base_table}
+
+        diff = DatabaseDiff(source_db, dest_db)
+        diff_tables = diff.tables
+        
+        self.assertTrue(table_name in diff_tables)
+        self.assertState(diff_tables[table_name],ALTERED)
+        self.assertTrue('col_1' in diff_tables[table_name].columns)
+        self.assertState(diff_tables[table_name].columns['col_1'],UNCHANGED)
+        self.assertTrue('col_2' in diff_tables[table_name].columns)
+        self.assertState(diff_tables[table_name].columns['col_2'],DROPPED)
+
+         
+        
+
 
 
 if __name__ == "__main__":
