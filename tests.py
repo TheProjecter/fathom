@@ -686,10 +686,21 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     DEFAULT_INTEGER_TYPE_NAME = 'number'
     HAS_USABLE_INDEX_NAMES = False
     
+    PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()    
+    PROCEDURES['foo_double'] = '''
+CREATE FUNCTION foo_double (value int4)
+    RETURNS INTEGER
+        RETURN 2 * value;
+'''
+    PROCEDURES['simple_proc'] = '''
+CREATE PROCEDURE simple_proc()
+BEGIN
+END;
+'''
+    
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     # oracle doesn't accept reserved words as identifiers
     TABLES.pop('reserved_word_column')
-    # TABLES.pop('reference_two_tables')
 
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
@@ -802,6 +813,7 @@ class DatabaseTypeTestCase(TestCase):
         self.assertRaises(FathomError, get_database_type, 
                           'dbname=not_existing_database user=fathom')
 
+
 class DatabaseDiffTestCase(TestCase):
 
     def setUp(self):
@@ -913,10 +925,6 @@ class DatabaseDiffTestCase(TestCase):
         self.assertState(diff_tables[table_name].columns['col_1'],UNCHANGED)
         self.assertTrue('col_2' in diff_tables[table_name].columns)
         self.assertState(diff_tables[table_name].columns['col_2'],DROPPED)
-
-         
-        
-
 
 
 if __name__ == "__main__":
