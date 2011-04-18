@@ -516,9 +516,8 @@ WHERE object_type = 'TRIGGER'
 """
 
     _PROCEDURE_NAMES_SQL = """
-SELECT lower(object_name) 
-FROM user_objects 
-WHERE object_type = 'FUNCTION' OR object_type = 'PROCEDURE'
+SELECT lower(object_name)
+FROM user_procedures
 """
     
     _COLUMN_NAMES_SQL = """
@@ -571,7 +570,8 @@ ORDER BY position
         return Column(row[0], data_type, default=default, not_null=not_null)
         
     def prepare_procedure(self, row):
-        return row[0], Procedure(row[0], inspector=self)
+        procedure = Procedure(row[0], inspector=self)
+        return row[0], procedure
         
     def build_foreign_keys(self, table):
         table.foreign_keys = []

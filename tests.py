@@ -335,7 +335,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         def function(Class, cursor):
             for sql in sqls:
                 sql = Class.substitute_quote_char(sql)
-                cursor.execute(sql);
+                cursor.execute(sql)
         Class._run_using_cursor(function)
         
     @classmethod    
@@ -688,14 +688,17 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     
     PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()    
     PROCEDURES['foo_double'] = '''
-CREATE FUNCTION foo_double (value int4)
-    RETURNS INTEGER
-        RETURN 2 * value;
+CREATE FUNCTION foo_double 
+    RETURN VARCHAR2 IS
+    BEGIN 
+        RETURN 'dd'; 
+    END;
 '''
     PROCEDURES['simple_proc'] = '''
-CREATE PROCEDURE simple_proc()
-BEGIN
-END;
+CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
+    BEGIN
+        suchar := 'f';
+    END;
 '''
     
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
