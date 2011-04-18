@@ -807,7 +807,9 @@ class DatabaseDiffTestCase(TestCase):
     def setUp(self):
 
         self.table1 = Table('table_1')
+        self.table1.columns = {}
         self.table2 = Table('table_2')
+        self.table2.columns = {}
 
 
         self.base_db = Database(name='base')
@@ -866,7 +868,7 @@ class DatabaseDiffTestCase(TestCase):
         base_table.columns = {'col_1': col_1}
           
         more_columns_table = Table(table_name)
-        more_columns_table = {'col_1': col_1, 'col_2': col_2}
+        more_columns_table.columns = {'col_1': col_1, 'col_2': col_2}
 
         source_db = Database(name='base')
         source_db.tables = {table_name : base_table}
@@ -894,7 +896,7 @@ class DatabaseDiffTestCase(TestCase):
         base_table.columns = {'col_1': col_1}
           
         more_columns_table = Table(table_name)
-        more_columns_table = {'col_1': col_1, 'col_2': col_2}
+        more_columns_table.columns = {'col_1': col_1, 'col_2': col_2}
 
         source_db = Database(name='base')
         source_db.tables = {table_name : more_columns_table}
