@@ -829,6 +829,9 @@ class DatabaseTypeTestCase(TestCase):
         self.assertEqual(get_database_type('dbname=fathom user=fathom'),
                          'PostgreSQL')
     
+    def test_oracle(self):
+        self.assertEqual(get_database_type('fathom', 'fathom'), 'Oracle')
+    
     def test_exception(self):
         self.assertRaises(FathomError, get_database_type, 
                           'non_existing_file.db')
@@ -836,6 +839,8 @@ class DatabaseTypeTestCase(TestCase):
                           db='non_existing_database')
         self.assertRaises(FathomError, get_database_type, 
                           'dbname=not_existing_database user=fathom')
+        self.assertRaises(FathomError, get_database_type,
+                          'fathom', 'wrong_password')
 
 
 class DatabaseDiffTestCase(TestCase):
