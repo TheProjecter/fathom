@@ -844,6 +844,9 @@ class DatabaseTypeTestCase(TestCase):
 
 
 class DatabaseDiffTestCase(TestCase):
+    
+    STATE_STRINGS = {UNCHANGED: 'UNCHANGED', CREATED: 'CREATED', 
+                     DROPPED: 'DROPPED', ALTERED: 'ALTERED'}
 
     def setUp(self):
 
@@ -854,6 +857,7 @@ class DatabaseDiffTestCase(TestCase):
 
 
         self.base_db = Database(name='base')
+        self.dest_db = Database(name='dest')
 
         self.base_db.tables = {self.table1.name: self.table1}
 
@@ -862,7 +866,9 @@ class DatabaseDiffTestCase(TestCase):
 
     def assertState(self, item, state):
         if item.state != state:
-            raise AssertionError("item state is: %d, expecting %d" % (item.state, state))
+            raise AssertionError("item state is: %s, expecting %s" % 
+                                 (self.STATE_STRINGS[item.state], 
+                                  self.STATE_STRINGS[state]))
 
 
     def test_new_table(self): 
@@ -898,7 +904,6 @@ class DatabaseDiffTestCase(TestCase):
         unchanged_table = diff_tables[self.table1.name]
         self.assertState(unchanged_table, UNCHANGED)
 
-    
     def test_new_columns(self):
         col_1 = Column('col_1', 'varchar(10)')
         col_2 = Column('col_2', 'varchar(10)')
@@ -954,6 +959,22 @@ class DatabaseDiffTestCase(TestCase):
         self.assertState(diff_tables[table_name].columns['col_1'],UNCHANGED)
         self.assertTrue('col_2' in diff_tables[table_name].columns)
         self.assertState(diff_tables[table_name].columns['col_2'],DROPPED)
+        
+    def test_changed_column1(self):
+        source_table = Table('table')
+        source_table.columns = {'col_1': Column('col_1', 'varchar(10)')}
+        
+        dest_table = Table('table')
+        dest_table.columns = {'col_1': Column('col_1', 'varchar(16)')}
+        
+        self.base_db.tables = {'table': source_table}
+        self.dest_db.tables = {'table': dest_table}
+        
+        diff = DatabaseDiff(self.base_db, self.dest_db)
+        self.assertTrue('table' in diff.tables)
+        self.assertState(diff.tables['table'], ALTERED)
+        self.assertTrue('col_1' in diff.tables['table'].columns)
+        self.assertState(diff.tables['table'].columns['col_1'], ALTERED)
 
 
 if __name__ == "__main__":
