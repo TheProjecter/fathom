@@ -21,7 +21,8 @@ def get_oracle_database(user, password):
 TYPE_TO_FUNCTION = {
     'Sqlite3': get_sqlite3_database,
     'PostgreSQL': get_postgresql_database,
-    'MySQL': get_mysql_database
+    'MySQL': get_mysql_database,
+    'Oracle': get_oracle_database
 }
 
 def get_database(*args, **kwargs):

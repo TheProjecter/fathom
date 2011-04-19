@@ -77,6 +77,9 @@ def get_database_type(*args, **kwargs):
             return 'PostgreSQL'
         if _try_sqlite(args[0]):
             return 'Sqlite3'
+    if len(args) > 1:
+        if _try_oracle(args[0], args[1]):
+            return 'Oracle'
     if len(kwargs) > 0:
         if _try_mysql(kwargs):
             return 'MySQL'
@@ -122,6 +125,21 @@ def _try_mysql(params):
         cursor.execute("SELECT version()")
         connection.close()
     except Exception:
+        return False
+    return True
+    
+def _try_oracle(username, password):
+    try:
+        import cx_Oracle
+    except ImportError:
+        return False
+    try:
+        connection = cx_Oracle.connect(username, password)
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM v$version")
+        connection.close()
+    except Exception as e:
+        print(e)
         return False
     return True
 
