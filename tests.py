@@ -77,6 +77,21 @@ except ImportError:
     oracle_errors = ()
     TEST_ORACLE = False
 
+def procedure_test(procedure_name, arguments_count, returns):
+    
+    '''Decorator for procedure tests, that simplifies testing whether procedure
+    with given name is available, whether it has given number of arguments
+    and returns given value.'''
+    
+    def decorator(test):
+        def result(self):
+            procedure = self.db.procedures[procedure_name]
+            self.assertEqual(len(procedure.arguments), arguments_count)
+            self.assertEqual(procedure.returns, returns)
+            test(self, procedure)
+        return result
+    return decorator
+
 class AbstractDatabaseTestCase(metaclass=ABCMeta):
     
     DEFAULT_INTEGER_TYPE_NAME = 'integer'
@@ -503,10 +518,9 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
         table = self.db.tables['empty']
         self.assertEqual(set(table.columns.keys()), set())
 
-    def test_fib_integer(self):
-        procedure = self.db.procedures['fib(int4)']
+    @procedure_test('fib(int4)', 1, 'int4')
+    def test_fib_integer(self, procedure):
         self.assertArguments(procedure, [('fib_for', 'int4')])
-        self.assertEqual(procedure.returns, 'int4')
         self.assertEqual(procedure.sql, '''
     BEGIN
         IF fib_for < 2 THEN
@@ -516,10 +530,9 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
     END;
 ''')
 
-    def test_void_function(self):
-        procedure = self.db.procedures['void_function()']
+    @procedure_test('void_function()', 0, None)
+    def test_void_function(self, procedure):
         self.assertArguments(procedure, [])
-        self.assertEqual(procedure.returns, None)
 
     # trigger tests
     
@@ -637,14 +650,12 @@ CREATE PROCEDURE get_accessing_procedures_1()
         
     # tests
     
-    def test_foo_double(self):
-        procedure = self.db.procedures['foo_double']
-        self.assertEqual(procedure.returns, 'integer')
+    @procedure_test('foo_double', 0, 'integer')
+    def test_foo_double(self, procedure):
         self.assertEqual(procedure.sql, 'RETURN 2 * value')
-        
-    def test_simple_proc(self):
-        procedure = self.db.procedures['simple_proc']
-        self.assertEqual(procedure.returns, None)
+
+    @procedure_test('simple_proc', 0, None)
+    def test_simple_proc(self, procedure):
         self.assertEqual(procedure.sql, 'BEGIN\nEND')
 
     # find_accessing_procedures tests
@@ -708,6 +719,16 @@ CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
+        
+    # procedure tests
+    
+    @procedure_test('foo_double', 0, 'varchar2')
+    def test_procedure_foo_double(self, procedure):
+        pass
+
+    @procedure_test('simple_proc', 1, None)
+    def test_procedure_simple_proc(self, procedure):
+        pass
 
     def index_name(self, table_name, *columns, count=1):
         return ''
