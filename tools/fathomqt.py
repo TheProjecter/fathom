@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
+from sys import argv
 from os.path import join
 
-from PyQt4.QtCore import (QFileSystemModel, QDir, SIGNAL, Qt)
+from PyQt4.QtCore import (QDir, SIGNAL, Qt)
 from PyQt4.QtGui import (QDialog, QHBoxLayout, QWidget, QLabel, QStackedWidget,
                          QRadioButton, QLineEdit, QTreeView, QGridLayout,
-                         QVBoxLayout, QPushButton)
+                         QVBoxLayout, QPushButton, QFileSystemModel, 
+                         QApplication)
 
 class QConnectionDialog(QDialog):
     
@@ -76,11 +78,29 @@ class QConnectionDialog(QDialog):
             
     
     class MySqlWidget(QWidget):
-        pass
+        
+        def __init__(self, parent=None):
+            QWidget.__init__(self, parent)
         
     
     class OracleWidget(QWidget):
-        pass
+
+        PARAMS = (("User:", "user"), ("Password:", "password"),
+                  ("Database source name:", "dsn"))
+        
+        def __init__(self, parent=None):
+            QWidget.__init__(self, parent)
+            
+            grid = QGridLayout()
+            for index, (label, field) in enumerate(self.PARAMS):
+                label = QLabel(self.tr(label))
+                grid.addWidget(label, index, 0, Qt.AlignLeft | Qt.AlignTop)            
+                setattr(self, field, QLineEdit())
+                grid.addWidget(getattr(self, field), index, 1)
+
+            self.setLayout(QVBoxLayout())
+            self.layout().addLayout(grid)
+            self.layout().addStretch()
 
 
     def __init__(self, parent=None):
@@ -106,8 +126,6 @@ class QConnectionDialog(QDialog):
             radioLayout.addWidget(button)
             self.connect(button, SIGNAL('pressed()'), getattr(self, method))
             setattr(self, field, button)
-        self.oracle.setDisabled(True)
-        self.mysql.setDisabled(True)
         radioLayout.addStretch()
         self.postgres.toggle()
         
@@ -115,6 +133,8 @@ class QConnectionDialog(QDialog):
         self.stackedWidget = QStackedWidget()
         self.stackedWidget.addWidget(self.PostgresWidget())
         self.stackedWidget.addWidget(self.SqliteWidget())
+        self.stackedWidget.addWidget(self.OracleWidget())
+        self.stackedWidget.addWidget(self.MySqlWidget())
         widgetsLayout.addWidget(self.stackedWidget)
 
         # preparing ok and cancel buttons at the bottom
@@ -145,3 +165,8 @@ class QConnectionDialog(QDialog):
             
     def getDatabaseParams(self):
         return self.stackedWidget.currentWidget().getDatabaseParams()
+
+
+if __name__ == "__main__":
+    app = QApplication(argv)
+    QConnectionDialog().exec()
