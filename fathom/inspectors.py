@@ -278,9 +278,12 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
         sql = self._PROCEDURE_ARGUMENTS_SQL % (name, arg_type_oids)
         result = self._select(sql)[0]
         names, oids = result[0], result[1].split(' ')
-        types = self.types_from_oids(oids)
-        procedure.arguments = dict((name, Argument(name, type)) 
-                                   for name, type in zip(result[0], types))
+        if oids != ['']:
+            types = self.types_from_oids(oids)
+            procedure.arguments = dict((name, Argument(name, type)) 
+                                       for name, type in zip(result[0], types))
+        else:
+            procedure.arguments = {}
 
     def build_foreign_keys(self, table):
         sql = self._FOREIGN_KEYS_SQL % table.name
