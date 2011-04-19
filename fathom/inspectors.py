@@ -581,21 +581,16 @@ ORDER BY position
     def get_procedures(self):
         procedures =  dict(self.prepare_procedure(row)
                            for row in self._select(self._PROCEDURE_NAMES_SQL))
-        functions = dict(self.prepare_function(row)
+        functions = dict(self.prepare_procedure(row)
                          for row in self._select(self._FUNCTION_NAMES_SQL))
         procedures.update(functions)
         return procedures
         
     def prepare_procedure(self, row):
         procedure = Procedure(row[0], inspector=self)
-        procedure.returns = None
+        procedure.returns = row[1] if len(row) > 1 else None
         return row[0], procedure
-        
-    def prepare_function(self, row):
-        procedure = Procedure(row[0], inspector=self)
-        procedure.returns = row[1]
-        return row[0], procedure
-        
+                
     def build_foreign_keys(self, table):
         table.foreign_keys = []
         
