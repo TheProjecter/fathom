@@ -17,7 +17,10 @@ class ColumnDiff(object):
             elif self.source_col is not None and self.dest_col is None:
                 self._state = DROPPED
             else:
-                self._state = UNCHANGED
+                if self.source_col.type == self.dest_col.type:
+                    self._state = UNCHANGED
+                else:
+                    self._state = ALTERED
         return self._state
     
     state = property(_get_state)
