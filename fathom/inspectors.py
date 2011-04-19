@@ -590,6 +590,9 @@ ORDER BY position
         procedure = Procedure(row[0], inspector=self)
         procedure.returns = row[1] if len(row) > 1 else None
         return row[0], procedure
+        
+    def build_procedure(self, procedure):
+        procedure.arguments = []
                 
     def build_foreign_keys(self, table):
         table.foreign_keys = []
