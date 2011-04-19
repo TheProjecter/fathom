@@ -517,7 +517,16 @@ WHERE object_type = 'TRIGGER'
 
     _PROCEDURE_NAMES_SQL = """
 SELECT lower(object_name)
-FROM user_procedures
+FROM user_objects
+WHERE object_type = 'PROCEDURE'
+"""
+
+    _FUNCTION_NAMES_SQL = """
+SELECT lower(objects.object_name), lower(arguments.data_type)
+FROM user_objects objects, user_arguments arguments
+WHERE objects.object_type = 'FUNCTION' AND 
+      objects.object_name = arguments.object_name AND
+      arguments.argument_name IS NULL
 """
     
     _COLUMN_NAMES_SQL = """
@@ -568,9 +577,23 @@ ORDER BY position
         not_null = (row[4] == 'N')
         default = self.prepare_default(data_type, row[3])                    
         return Column(row[0], data_type, default=default, not_null=not_null)
+
+    def get_procedures(self):
+        procedures =  dict(self.prepare_procedure(row)
+                           for row in self._select(self._PROCEDURE_NAMES_SQL))
+        functions = dict(self.prepare_function(row)
+                         for row in self._select(self._FUNCTION_NAMES_SQL))
+        procedures.update(functions)
+        return procedures
         
     def prepare_procedure(self, row):
         procedure = Procedure(row[0], inspector=self)
+        procedure.returns = None
+        return row[0], procedure
+        
+    def prepare_function(self, row):
+        procedure = Procedure(row[0], inspector=self)
+        procedure.returns = row[1]
         return row[0], procedure
         
     def build_foreign_keys(self, table):
