@@ -531,6 +531,12 @@ WHERE objects.object_type = 'FUNCTION' AND
       objects.object_name = arguments.object_name AND
       arguments.argument_name IS NULL
 """
+
+    _ARGUMENTS_SQL = """
+SELECT lower(argument_name), lower(data_type)
+FROM user_arguments
+WHERE argument_name IS NOT NULL AND object_name = upper('%s')
+"""
     
     _COLUMN_NAMES_SQL = """
 SELECT lower(column_name), lower(data_type), data_length, data_default, 
@@ -595,7 +601,9 @@ ORDER BY position
         return row[0], procedure
         
     def build_procedure(self, procedure):
-        procedure.arguments = []
+        sql = self._ARGUMENTS_SQL % procedure.name
+        procedure.arguments = {row[0]: Argument(row[0], row[1]) 
+                               for row in self._select(sql)}
                 
     def build_foreign_keys(self, table):
         table.foreign_keys = []
