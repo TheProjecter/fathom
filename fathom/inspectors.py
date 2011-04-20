@@ -511,7 +511,8 @@ WHERE table_name = '%s'
             data_type = row[1]
         not_null = (row[3] == 'NO')
         default = self.prepare_default(data_type, row[4])
-        return Column(row[0], data_type, not_null=not_null, default=default)
+        return Column(row[0], data_type, not_null=not_null, default=default,
+                      has_case_sensitive_name=(row[0] != row[0].lower()))
 
     def supports_routine_parametres(self):
         return self.version >= (5, 5)
