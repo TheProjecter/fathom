@@ -14,8 +14,6 @@ class DatabaseInspector(metaclass=ABCMeta):
     
     '''Abstract base class for database system inspectors.'''
     
-    QUOTE_CHAR = '"'
-    
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
@@ -24,11 +22,9 @@ class DatabaseInspector(metaclass=ABCMeta):
         '''Return names of all tables in the database.'''
         tables = {}
         for row in self._select(self._TABLE_NAMES_SQL):
-            if row[0] == row[0].lower():
-                tables[row[0]] = Table(row[0], inspector=self)
-            else:
-                tables[row[0]] = Table(row[0], inspector=self,
-                                       has_case_sensitive_name=True)                
+            table = Table(row[0], inspector=self,
+                          has_case_sensitive_name=(row[0] != row[0].lower()))
+            tables[row[0]] = table
         return tables
         
     def get_views(self):
@@ -342,8 +338,9 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
         else:
             data_type = row[1]
         not_null = (row[3] == 'NO')
-        default = self.prepare_default(data_type, row[4])        
-        return Column(row[0], data_type, not_null=not_null, default=default)
+        default = self.prepare_default(data_type, row[4])   
+        return Column(row[0], data_type, not_null=not_null, default=default,
+                      has_case_sensitive_name=(row[0] != row[0].lower()))
         
     def prepare_procedure(self, row):
         # because PostgreSQL identifies procedure by <proc_name>(<proc_args>)
