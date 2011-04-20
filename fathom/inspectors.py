@@ -63,9 +63,11 @@ class DatabaseInspector(metaclass=ABCMeta):
 
     def build_columns(self, schema_object):
         sql = self._COLUMN_NAMES_SQL % schema_object.name
-        name = row[0] if self.USES_CASE_SENSITIVE_IDS else row[0].lower()
-        schema_object.columns = dict((name, self.prepare_column(row)) 
-                                     for row in self._select(sql))
+        columns = {}
+        for row in self._select(sql):
+            name = row[0] if self.USES_CASE_SENSITIVE_IDS else row[0].lower()
+            columns[name] = self.prepare_column(row)
+        schema_object.columns = columns
 
     def build_indices(self, table):
         sql = self._TABLE_INDEX_NAMES_SQL % table.name
