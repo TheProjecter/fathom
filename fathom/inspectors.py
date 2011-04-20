@@ -24,16 +24,8 @@ class DatabaseInspector(metaclass=ABCMeta):
         
     def get_tables(self):
         '''Return names of all tables in the database.'''
-        tables = {}
-        for row in self._select(self._TABLE_NAMES_SQL):
-            if self.USES_CASE_SENSITIVE_IDS:
-                case_sensitive = (row[0] != row[0].lower())
-                table = Table(row[0], inspector=self,
-                              has_case_sensitive_name=case_sensitive)
-                tables[row[0]] = table
-            else:
-                tables[row[0].lower()] = Table(row[0].lower(), inspector=self)
-        return tables
+        return {self.case(row[0]): Table(self.case(row[0]), inspector=self)
+                for row in self._select(self._TABLE_NAMES_SQL)}
         
     def get_views(self):
         '''Return names of all views in the database.'''
@@ -100,6 +92,11 @@ class DatabaseInspector(metaclass=ABCMeta):
         rows = list(cursor)
         connection.close()
         return rows
+        
+    def case(self, string):
+        if self.USES_CASE_SENSITIVE_IDS:
+            return string
+        return string.lower()
 
 
 class SqliteInspector(DatabaseInspector):
@@ -356,8 +353,7 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
             data_type = row[1]
         not_null = (row[3] == 'NO')
         default = self.prepare_default(data_type, row[4])   
-        return Column(row[0], data_type, not_null=not_null, default=default,
-                      has_case_sensitive_name=(row[0] != row[0].lower()))
+        return Column(row[0], data_type, not_null=not_null, default=default)
         
     def prepare_procedure(self, row):
         # because PostgreSQL identifies procedure by <proc_name>(<proc_args>)
@@ -511,8 +507,7 @@ WHERE table_name = '%s'
             data_type = row[1]
         not_null = (row[3] == 'NO')
         default = self.prepare_default(data_type, row[4])
-        return Column(row[0], data_type, not_null=not_null, default=default,
-                      has_case_sensitive_name=(row[0] != row[0].lower()))
+        return Column(row[0], data_type, not_null=not_null, default=default)
 
     def supports_routine_parametres(self):
         return self.version >= (5, 5)
@@ -520,35 +515,35 @@ WHERE table_name = '%s'
 
 class OracleInspector(DatabaseInspector):
 
-    INTEGER_TYPES = ('number',)
-    FLOAT_TYPES = ('float',)
+    INTEGER_TYPES = ('NUMBER',)
+    FLOAT_TYPES = ('FLOAT',)
 
     _TABLE_NAMES_SQL = """
-SELECT lower(object_name)
+SELECT object_name
 FROM user_objects 
 WHERE object_type = 'TABLE' AND object_name NOT LIKE 'BIN%'
 """
     
     _VIEW_NAMES_SQL = """
-SELECT lower(object_name)
+SELECT object_name
 FROM user_objects
 WHERE object_type = 'VIEW'
 """
 
     _TRIGGER_NAMES_SQL = """
-SELECT lower(object_name)
+SELECT object_name
 FROM user_objects
 WHERE object_type = 'TRIGGER'
 """
 
     _PROCEDURE_NAMES_SQL = """
-SELECT lower(object_name)
+SELECT object_name
 FROM user_objects
 WHERE object_type = 'PROCEDURE'
 """
 
     _FUNCTION_NAMES_SQL = """
-SELECT lower(objects.object_name), lower(arguments.data_type)
+SELECT objects.object_name, arguments.data_type
 FROM user_objects objects, user_arguments arguments
 WHERE objects.object_type = 'FUNCTION' AND 
       objects.object_name = arguments.object_name AND
@@ -556,33 +551,32 @@ WHERE objects.object_type = 'FUNCTION' AND
 """
 
     _ARGUMENTS_SQL = """
-SELECT lower(argument_name), lower(data_type)
+SELECT argument_name, data_type
 FROM user_arguments
 WHERE argument_name IS NOT NULL AND object_name = upper('%s')
 """
     
     _COLUMN_NAMES_SQL = """
-SELECT lower(column_name), lower(data_type), data_length, data_default, 
+SELECT column_name, data_type, data_length, data_default, 
        upper(nullable)
 FROM all_tab_columns
 WHERE table_name = upper('%s')
 """
     
     _TABLE_INDEX_NAMES_SQL = """
-SELECT lower(index_name)
+SELECT index_name
 FROM user_indexes
 WHERE table_name = upper('%s')
 """
 
     _TRIGGER_INFO_SQL = """
-SELECT lower(table_name), trigger_type, triggering_event
+SELECT table_name, trigger_type, triggering_event
 FROM user_triggers
 WHERE trigger_name = upper('%s')
 """
     
     _FOREIGN_KEY_NAMES_SQL = """
-SELECT lower(first.constraint_name), lower(first.r_constraint_name),
-       lower(second.table_name)
+SELECT first.constraint_name, first.r_constraint_name, second.table_name
 FROM user_constraints first, user_constraints second
 WHERE first.constraint_type = 'R' AND 
       first.r_constraint_name = second.constraint_name AND
@@ -590,7 +584,7 @@ WHERE first.constraint_type = 'R' AND
 """
     
     _FOREIGN_KEY_SQL = """
-SELECT lower(column_name)
+SELECT column_name
 FROM all_cons_columns
 WHERE constraint_name = upper('%s')
 ORDER BY position
@@ -602,8 +596,8 @@ ORDER BY position
         self._api = cx_Oracle
         
     def prepare_column(self, row):
-        if row[1].startswith('varchar'):
-            data_type = 'varchar(%s)' % row[2]
+        if row[1].startswith('VARCHAR'):
+            data_type = 'VARCHAR(%s)' % row[2]
         else:
             data_type = row[1]
         not_null = (row[4] == 'N')
