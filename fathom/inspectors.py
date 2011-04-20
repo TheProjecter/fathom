@@ -14,14 +14,22 @@ class DatabaseInspector(metaclass=ABCMeta):
     
     '''Abstract base class for database system inspectors.'''
     
+    QUOTE_CHAR = '"'
+    
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
         
     def get_tables(self):
         '''Return names of all tables in the database.'''
-        return dict((row[0], Table(row[0], inspector=self)) 
-                    for row in self._select(self._TABLE_NAMES_SQL))
+        tables = {}
+        for row in self._select(self._TABLE_NAMES_SQL):
+            if row[0] == row[0].lower():
+                tables[row[0]] = Table(row[0], inspector=self)
+            else:
+                tables[row[0]] = Table(row[0], inspector=self,
+                                       has_case_sensitive_name=True)                
+        return tables
         
     def get_views(self):
         '''Return names of all views in the database.'''
