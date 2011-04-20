@@ -139,7 +139,6 @@ def _try_oracle(username, password):
         cursor.execute("SELECT * FROM v$version")
         connection.close()
     except Exception as e:
-        print(e)
         return False
     return True
 

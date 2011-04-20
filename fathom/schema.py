@@ -1,12 +1,26 @@
 #!/usr/bin/python3
 
-class Database(object):
+class Named(object):
     
-    def __init__(self, name='', inspector=None):
+    def __init__(self, name, has_case_sensitive_name=False):
+        super(Named, self).__init__()
+        self._name = name
+        self.has_case_sensitive_name = has_case_sensitive_name
+        
+    def _get_name(self):
+        if self.has_case_sensitive_name:
+            return self._name
+        else:
+            return self._name.lower()
+    name = property(_get_name)
+
+
+class Database(Named):
+    
+    def __init__(self, name='', inspector=None, **kwargs):
         # TODO: somehow database name should be set too, maybe inspector should
         # get it too
-        super(Database, self).__init__()
-        self.name = name
+        super(Database, self).__init__(name, **kwargs)
         self.inspector = inspector
 
         self._tables = None
@@ -87,11 +101,10 @@ class WithColumns(object):
     columns = property(_get_columns, _set_columns)
 
 
-class Table(WithColumns):
+class Table(Named, WithColumns):
     
-    def __init__(self, name, inspector=None):
-        super(Table, self).__init__()
-        self.name = name
+    def __init__(self, name, inspector=None, **kwargs):
+        super(Table, self).__init__(name, **kwargs)
         self.inspector = inspector
         self._indices = None
         self._foreign_keys = None
@@ -117,19 +130,17 @@ class Table(WithColumns):
     foreign_keys = property(_get_foreign_keys, _set_foreign_keys)
         
 
-class View(WithColumns):
+class View(Named, WithColumns):
     
-    def __init__(self, name, inspector=None):
-        super(View, self).__init__()
-        self.name = name
+    def __init__(self, name, inspector=None, **kwargs):
+        super(View, self).__init__(name, **kwargs)
         self.inspector = inspector
 
 
-class Index(object):
+class Index(Named):
     
-    def __init__(self, name, inspector=None):
-        super(Index, self).__init__()
-        self.name = name
+    def __init__(self, name, inspector=None, **kwargs):
+        super(Index, self).__init__(name, **kwargs)
         self._columns = None
         self.inspector = inspector
         
@@ -141,11 +152,10 @@ class Index(object):
     columns = property(_get_columns)
 
         
-class Procedure(object):
+class Procedure(Named):
     
-    def __init__(self, name, inspector=None):
-        super(Procedure, self).__init__()
-        self.name = name
+    def __init__(self, name, inspector=None, **kwargs):
+        super(Procedure, self).__init__(name, **kwargs)
         self._arguments = None
         self.returns = None
         self.inspector = inspector
@@ -171,14 +181,13 @@ class Procedure(object):
     arguments = property(_get_arguments, _set_arguments)
             
 
-class Trigger(object):
+class Trigger(Named):
     
     BEFORE, AFTER, INSTEAD = range(3)
     UPDATE, INSERT, DELETE = range(3)
     
-    def __init__(self, name, when=None, event=None, inspector=None):
-        super(Trigger, self).__init__()
-        self.name = name
+    def __init__(self, name, when=None, event=None, inspector=None, **kwargs):
+        super(Trigger, self).__init__(name, **kwargs)
         self._table = None
         self.when = when
         self.event = event
@@ -195,19 +204,17 @@ class Trigger(object):
     table = property(_get_table, _set_table)
 
 
-class Argument(object):
+class Argument(Named):
     
-    def __init__(self, name, type):
-        super(Argument, self).__init__()
-        self.name = name
+    def __init__(self, name, type, **kwargs):
+        super(Argument, self).__init__(name, **kwargs)
         self.type = type
 
 
-class Column(object):
+class Column(Named):
     
-    def __init__(self, name, type, not_null=False, default=None):
-        super(Column, self).__init__()
-        self.name = name
+    def __init__(self, name, type, not_null=False, default=None, **kwargs):
+        super(Column, self).__init__(name, **kwargs)
         self.type = type
         self.not_null = not_null
         self.default = default
