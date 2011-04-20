@@ -98,6 +98,7 @@ class AbstractDatabaseTestCase(metaclass=ABCMeta):
     PRIMARY_KEY_IS_NOT_NULL = True
     CREATES_INDEX_FOR_PRIMARY_KEY = True
     HAS_USABLE_INDEX_NAMES = True
+    USES_CASE_SENSITIVE_IDENTIFIERS = True
     
     TABLES = OrderedDict((
         ('one_column', '''
@@ -217,8 +218,12 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     # table tests
 
     def test_table_names(self):
-        self.assertEqual(set([table.name for table in self.db.tables.values()]), 
-                         set(self.TABLES.keys()))
+        if self.USES_CASE_SENSITIVE_IDENTIFIERS:
+            test_names = set(self.TABLES.keys())
+        else:
+            test_names = set([name.lower() for name in self.TABLES.keys()])
+        names = set([table.name for table in self.db.tables.values()])
+        self.assertEqual(names, test_names)
 
     def test_table_one_column(self):
         table = self.db.tables['one_column']
@@ -306,15 +311,24 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self.assertEqual(len(table.foreign_keys), 2)
         
     def test_table_SoMe_TaBlE(self):
-        table = self.db.tables['SoMe_TaBlE']
-        self.assertTrue(table.has_case_sensitive_name)
+        if self.USES_CASE_SENSITIVE_IDENTIFIERS:
+            table = self.db.tables['SoMe_TaBlE']
+            self.assertTrue(table.has_case_sensitive_name)
+        else:
+            table = self.db.tables['some_table']
+            self.assertFalse(table.has_case_sensitive_name)
     
     def test_table_case_sensitive_column(self):
         table = self.db.tables['case_sensitive_column']
         self.assertFalse(table.has_case_sensitive_name)
-        column = table.columns['SoMe_CoLuMn']
-        self.assertTrue(column.has_case_sensitive_name)
-        self.assertEqual(column.name, 'SoMe_CoLuMn')
+        if self.USES_CASE_SENSITIVE_IDENTIFIERS:
+            column = table.columns['SoMe_CoLuMn']
+            self.assertTrue(column.has_case_sensitive_name)
+            self.assertEqual(column.name, 'SoMe_CoLuMn')
+        else:
+            column = table.columns['some_column']
+            self.assertFalse(column.has_case_sensitive_name)
+            self.assertEqual(column.name, 'some_column')
         self.assertEqual(column.type, self.DEFAULT_INTEGER_TYPE_NAME)
             
     # view tests
@@ -773,6 +787,7 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
 
     PRIMARY_KEY_IS_NOT_NULL = False
     CREATES_INDEX_FOR_PRIMARY_KEY = False
+    USES_CASE_SENSITIVE_IDENTIFIERS = False
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
     TABLES['django_admin_log'] = '''

@@ -13,6 +13,10 @@ TRIGGER_EVENT_NAMES = {'INSERT': Trigger.INSERT, 'UPDATE': Trigger.UPDATE,
 class DatabaseInspector(metaclass=ABCMeta):
     
     '''Abstract base class for database system inspectors.'''
+
+    # in most databases aaa, AaA and aAa is turned into "aaa" and you can
+    # get case sensitive names by quoting, so "AaA" keeps capital letters
+    USES_CASE_SENSITIVE_IDS = True
     
     def __init__(self, *args, **kwargs):
         self._args = args
@@ -22,9 +26,13 @@ class DatabaseInspector(metaclass=ABCMeta):
         '''Return names of all tables in the database.'''
         tables = {}
         for row in self._select(self._TABLE_NAMES_SQL):
-            table = Table(row[0], inspector=self,
-                          has_case_sensitive_name=(row[0] != row[0].lower()))
-            tables[row[0]] = table
+            if self.USES_CASE_SENSITIVE_IDS:
+                case_sensitive = (row[0] != row[0].lower())
+                table = Table(row[0], inspector=self,
+                              has_case_sensitive_name=case_sensitive)
+                tables[row[0]] = table
+            else:
+                tables[row[0].lower()] = Table(row[0].lower(), inspector=self)
         return tables
         
     def get_views(self):
@@ -55,7 +63,8 @@ class DatabaseInspector(metaclass=ABCMeta):
 
     def build_columns(self, schema_object):
         sql = self._COLUMN_NAMES_SQL % schema_object.name
-        schema_object.columns = dict((row[0], self.prepare_column(row)) 
+        name = row[0] if self.USES_CASE_SENSITIVE_IDS else row[0].lower()
+        schema_object.columns = dict((name, self.prepare_column(row)) 
                                      for row in self._select(sql))
 
     def build_indices(self, table):
@@ -92,6 +101,10 @@ class DatabaseInspector(metaclass=ABCMeta):
 
 
 class SqliteInspector(DatabaseInspector):
+
+    # Sqlite3 doesn't give a flying fuck about case sensitivity, so 
+    # "AaA" == "aaa"
+    USES_CASE_SENSITIVE_IDS = False
     
     _TABLE_NAMES_SQL = """SELECT name 
                           FROM sqlite_master
@@ -137,7 +150,7 @@ WHERE type='trigger' AND name = '%s'"""
         
     def build_columns(self, schema_object):
         sql = self._COLUMN_NAMES_SQL % schema_object.name
-        schema_object.columns = dict((row[1], self.prepare_column(row)) 
+        schema_object.columns = dict((row[1].lower(), self.prepare_column(row)) 
                                      for row in self._select(sql))
                                      
     def build_indices(self, table):
@@ -174,7 +187,8 @@ WHERE type='trigger' AND name = '%s'"""
     def prepare_column(self, row):
         not_null = bool(row[3])
         default = self.prepare_default(row[2], row[4]) if row[4] else None
-        return Column(row[1], row[2], not_null=not_null, default=default)
+        return Column(row[1].lower(), row[2].lower(), not_null=not_null, 
+                      default=default)
         
     def get_index_columns(self, index):
         sql = self._INDEX_COLUMNS_SQL % index.name
@@ -190,6 +204,7 @@ WHERE type='trigger' AND name = '%s'"""
             fk.columns.append(row[3])
             fk.referenced_columns.append(row[4])
         table.foreign_keys = tuple(foreign_keys.values())
+
 
 class PostgresInspector(DatabaseInspector):
 
