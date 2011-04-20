@@ -76,7 +76,11 @@ class Database(Named):
     
     def supports_stored_procedures(self):
         return self.inspector.supports_stored_procedures()
-
+    
+    def case(self, string):
+        if self.inspector is not None:
+            return self.inspector.case(string)
+        return string
 
 class WithColumns(object):
 

@@ -146,7 +146,11 @@ def find_accessing_procedures(table):
     
     '''Provides list with names of procedures that access in some way the given
     table.'''
-    
+    case = table.database.case
     procedures = table.database.procedures
-    return [procedure.name for procedure in procedures.values()
-                           if table.name.lower() in procedure.sql.lower()]
+    if table.name == case(table.name):
+        return [procedure.name for procedure in table.database.procedures.values()
+                               if case(table.name) in case(procedure.sql)]
+    else:
+        return [procedure.name for procedure in procedures.values()
+                               if table.name in procedure.sql]

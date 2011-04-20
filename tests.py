@@ -531,6 +531,13 @@ CREATE FUNCTION get_accessing_procedures_1() RETURNS VOID AS $$
     END;
 $$ LANGUAGE plpgsql'''
 
+    PROCEDURES['get_accessing_procedures_2()'] = '''
+CREATE FUNCTION get_accessing_procedures_2() RETURNS VOID AS $$
+    BEGIN
+        SELECT * FROM some_table;
+    END;
+$$ LANGUAGE plpgsql'''
+
     # postgresql defines only subset of sql CREATE TRIGGER statement, that's
     # why keep separate dictionary of trigger fixtures and also must keep
     # table names to drop trigger properly
@@ -599,9 +606,14 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
         
     # find_accessing_procedures tests
     
-    def test_find_accessing_procedures(self):
+    def test_find_accessing_procedures1(self):
         procedures = find_accessing_procedures(self.db.tables['one_column'])
         names = ['get_accessing_procedures_1()']
+        self.assertEqual(set(procedures), set(names))
+        
+    def test_find_accessing_procedures2(self):
+        procedures = find_accessing_procedures(self.db.tables['SoMe_TaBlE'])
+        names = []
         self.assertEqual(set(procedures), set(names))
                 
     # postgresql internal methods required for testing
