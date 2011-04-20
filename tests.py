@@ -133,7 +133,16 @@ CREATE TABLE reference_one_unique_column (
 CREATE TABLE reference_two_tables (
     ref1 integer REFERENCES one_unique_column(col),
     ref2 integer REFERENCES primary_key_only(id)
+)'''),
+    ('SoMe_TaBlE', '''
+CREATE TABLE "SoMe_TaBlE" (
+    col integer
+)'''),
+    ('case_sensitive_column', '''
+CREATE TABLE case_sensitive_column (
+    "SoMe_CoLuMn" InTeGeR
 )''')
+
 ))
     
     VIEWS = {
@@ -295,6 +304,18 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     def test_table_reference_two_tables(self):
         table = self.db.tables['reference_two_tables']
         self.assertEqual(len(table.foreign_keys), 2)
+        
+    def test_table_SoMe_TaBlE(self):
+        table = self.db.tables['SoMe_TaBlE']
+        self.assertTrue(table.has_case_sensitive_name)
+    
+    def test_table_case_sensitive_column(self):
+        table = self.db.tables['case_sensitive_column']
+        self.assertFalse(table.has_case_sensitive_name)
+        column = table.columns['SoMe_CoLuMn']
+        self.assertTrue(column.has_case_sensitive_name)
+        self.assertEqual(column.name, 'SoMe_CoLuMn')
+        self.assertEqual(column.type, self.DEFAULT_INTEGER_TYPE_NAME)
             
     # view tests
 
@@ -358,8 +379,10 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         def function(Class, cursor):
             for name in names:
                 try:
-                    cursor.execute('DROP %s %s' % (type, name));
-                except Class.DATABASE_ERRORS:
+                    sql = 'DROP %s "%s"' % (type, name)
+                    sql = Class.substitute_quote_char(sql)
+                    cursor.execute(sql);
+                except Class.DATABASE_ERRORS as e:
                     pass # maybe it was not created, we need to try drop other
         Class._run_using_cursor(function)
 
@@ -386,6 +409,7 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
             self._add_operation(self.INDICES.values())
             self._add_triggers()
         except self.DATABASE_ERRORS as e:
+            print(e)
             self.tearDown()
             raise
             
@@ -680,8 +704,8 @@ CREATE PROCEDURE get_accessing_procedures_1()
     def _get_connection(Class):
         return mysql_module.connect(user=Class.USER, db=Class.DBNAME)
 
-    @staticmethod
-    def substitute_quote_char(string):
+    @classmethod
+    def substitute_quote_char(Class, string):
         return string.replace('"', '`')
 
 
@@ -740,9 +764,6 @@ CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
     def _get_connection(Class):
         return cx_Oracle.connect('%s/%s' % (Class.USER, Class.PASSWORD))
 
-    @staticmethod
-    def substitute_quote_char(string):
-        return string.replace('"', '')
 
 @skipUnless(TEST_SQLITE, 'Failed to import sqlite3 module.')
 class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
