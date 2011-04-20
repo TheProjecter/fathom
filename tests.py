@@ -141,6 +141,10 @@ CREATE TABLE reference_two_tables (
 CREATE TABLE "SoMe_TaBlE" (
     col integer
 )'''),
+    ('some_table', '''
+CREATE TABLE some_table (
+    col integer
+)'''),
     ('case_sensitive_column', '''
 CREATE TABLE case_sensitive_column (
     "SoMe_CoLuMn" InTeGeR
@@ -615,7 +619,12 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
         procedures = find_accessing_procedures(self.db.tables['SoMe_TaBlE'])
         names = []
         self.assertEqual(set(procedures), set(names))
-                
+        
+    def test_find_accessing_procedures3(self):
+        procedures = find_accessing_procedures(self.db.tables['some_table'])
+        names = []
+        self.assertEqual(set(procedures), set(names))
+                        
     # postgresql internal methods required for testing
         
     def index_name(self, table_name, *columns, count=1):
