@@ -1,19 +1,13 @@
 #!/usr/bin/python3
 
+lower = lambda string: string.lower()
+upper = lambda string: string.upper()
+
 class Named(object):
     
-    def __init__(self, name, has_case_sensitive_name=False):
+    def __init__(self, name):
         super(Named, self).__init__()
-        self._name = name
-        self.has_case_sensitive_name = has_case_sensitive_name
-        
-    def _get_name(self):
-        if self.has_case_sensitive_name:
-            return self._name
-        else:
-            return self._name.lower()
-    name = property(_get_name)
-
+        self.name = name
 
 class Database(Named):
     

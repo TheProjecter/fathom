@@ -85,9 +85,10 @@ def procedure_test(procedure_name, arguments_count, returns):
     
     def decorator(test):
         def result(self):
-            procedure = self.db.procedures[procedure_name]
+            procedure = self.db.procedures[self.case(procedure_name)]
             self.assertEqual(len(procedure.arguments), arguments_count)
-            self.assertEqual(procedure.returns, returns)
+            self.assertEqual(procedure.returns, 
+                             None if returns is None else self.case(returns))
             test(self, procedure)
         return result
     return decorator
@@ -99,6 +100,7 @@ class AbstractDatabaseTestCase(metaclass=ABCMeta):
     CREATES_INDEX_FOR_PRIMARY_KEY = True
     HAS_USABLE_INDEX_NAMES = True
     USES_CASE_SENSITIVE_IDENTIFIERS = True
+    case = lambda Class, string: string.lower()
     
     TABLES = OrderedDict((
         ('one_column', '''
@@ -143,7 +145,6 @@ CREATE TABLE "SoMe_TaBlE" (
 CREATE TABLE case_sensitive_column (
     "SoMe_CoLuMn" InTeGeR
 )''')
-
 ))
     
     VIEWS = {
@@ -184,13 +185,14 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     # new assertions
     
     def assertColumns(self, table, values):
-        names = set((name for name, _, _ in values))
+        names = set((self.case(name) for name, _, _ in values))
         self.assertEqual(set(table.columns.keys()), names)
         for name, type, not_null in values:
-            column = table.columns[name]
-            if column.type != type:
+            column = table.columns[self.case(name)]
+            if column.type != self.case(type):
                 msg = "Table: %s, column: %s, %s != %s" % \
-                      (table.name, column.name, column.type, type)
+                      (table.name, column.name, column.type, 
+                       self.case(type))
                 raise AssertionError(msg)
             if column.not_null != not_null:
                 msg = "Table: %s, column: %s, %s != %s" % \
@@ -202,14 +204,14 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self.assertEqual(index.columns, columns)
         
     def assertIndices(self, table, index_names):
-        names = set(index_names)
+        names = set([self.case(name) for name in index_names])
         self.assertEqual(set(table.indices.keys()), names)
         self.assertEqual(set([index.name for index in table.indices.values()]),
                          names)
                 
     def assertArguments(self, procedure, values):
         for name, type in values:
-            argument = procedure.arguments[name]
+            argument = procedure.arguments[self.case(name)]
             if argument.type != type:
                 msg = "Procedure: %s, argument: %s, %s != %s" % \
                       (procedure.name, argument.name, argument.type, type)
@@ -221,23 +223,28 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         if self.USES_CASE_SENSITIVE_IDENTIFIERS:
             test_names = set(self.TABLES.keys())
         else:
-            test_names = set([name.lower() for name in self.TABLES.keys()])
+            test_names = set([self.case(name) 
+                              for name in self.TABLES.keys()])
         names = set([table.name for table in self.db.tables.values()])
         self.assertEqual(names, test_names)
 
     def test_table_one_column(self):
-        table = self.db.tables['one_column']
-        self.assertEqual(set(table.columns.keys()), set(['col']))
-        self.assertEqual(table.columns['col'].type, 'varchar(800)')
-        self.assertEqual(table.columns['col'].not_null, False)
-        self.assertEqual(set(table.indices.keys()), set(['one_column_index']))
+        table = self.db.tables[self.case('one_column')]
+        column = self.case('col')
+        self.assertEqual(set(table.columns.keys()), set([column]))
+        self.assertEqual(table.columns[column].type, 
+                         self.case('varchar(800)'))
+        self.assertEqual(table.columns[column].not_null, False)
+        self.assertEqual(set(table.indices.keys()), 
+                         set([self.case('one_column_index')]))
         
     def test_table_one_unique_column(self):
-        table = self.db.tables['one_unique_column']
-        self.assertEqual(set(table.columns.keys()), set(['col']))
-        self.assertEqual(table.columns['col'].type, 
-                         self.DEFAULT_INTEGER_TYPE_NAME)
-        self.assertEqual(table.columns['col'].not_null, False)
+        # TODO: use assertColumns
+        table = self.db.tables[self.case('one_unique_column')]
+        self.assertEqual(set(table.columns.keys()), set([self.case('col')]))
+        self.assertEqual(table.columns[self.case('col')].type, 
+                         self.case(self.DEFAULT_INTEGER_TYPE_NAME))
+        self.assertEqual(table.columns[self.case('col')].not_null, False)
         if self.HAS_USABLE_INDEX_NAMES:
             index_names = [self.index_name('one_unique_column', 'col')]
             self.assertEqual(set(table.indices.keys()), set(index_names))
@@ -246,15 +253,16 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
             self.assertEqual(len(table.indices.keys()), 1)
         
     def test_table_column_with_default(self):
-        table = self.db.tables['column_with_default']
-        self.assertEqual(set(table.columns.keys()), set(['def_col']))
-        self.assertEqual(table.columns['def_col'].type,
-                         self.DEFAULT_INTEGER_TYPE_NAME)
-        self.assertEqual(table.columns['def_col'].not_null, False)
-        self.assertEqual(table.columns['def_col'].default, 5)
+        # TODO: user assertColumns
+        table = self.db.tables[self.case('column_with_default')]
+        self.assertEqual(set(table.columns.keys()), set([self.case('def_col')]))
+        self.assertEqual(table.columns[self.case('def_col')].type,
+                         self.case(self.DEFAULT_INTEGER_TYPE_NAME))
+        self.assertEqual(table.columns[self.case('def_col')].not_null, False)
+        self.assertEqual(table.columns[self.case('def_col')].default, 5)
         
     def test_table_two_columns_unique(self):
-        table = self.db.tables['two_columns_unique']
+        table = self.db.tables[self.case('two_columns_unique')]
         values = (('col1', self.DEFAULT_INTEGER_TYPE_NAME, False), 
                   ('col2', 'varchar(80)', False))
         self.assertColumns(table, values)
@@ -267,7 +275,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
             self.assertEqual(len(table.indices.keys()), 1)
 
     def test_table_primary_key_only(self):
-        table = self.db.tables['primary_key_only']
+        table = self.db.tables[self.case('primary_key_only')]
         values = (('id', self.DEFAULT_INTEGER_TYPE_NAME, 
                    self.PRIMARY_KEY_IS_NOT_NULL),)
         self.assertColumns(table, values)
@@ -284,7 +292,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
                 self.assertEqual(len(table.indices), 1)
         
     def test_table_two_double_uniques(self):
-        table = self.db.tables['two_double_uniques']
+        table = self.db.tables[self.case('two_double_uniques')]
         values = (('x', self.DEFAULT_INTEGER_TYPE_NAME, False),
                   ('y', self.DEFAULT_INTEGER_TYPE_NAME, False),
                   ('z', self.DEFAULT_INTEGER_TYPE_NAME, False))
@@ -299,36 +307,31 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
             self.assertEqual(len(table.indices.keys()), 2)
     
     def test_table_reference_one_unique_column(self):
-        table = self.db.tables['reference_one_unique_column']
+        table = self.db.tables[self.case('reference_one_unique_column')]
         self.assertEqual(len(table.foreign_keys), 1)
         fk = table.foreign_keys[0]
-        self.assertEqual(fk.columns, ['ref_one_column',])
-        self.assertEqual(fk.referenced_table, 'one_unique_column')
-        self.assertEqual(fk.referenced_columns, ['col',])
+        self.assertEqual(fk.columns, [self.case('ref_one_column')])
+        self.assertEqual(fk.referenced_table, self.case('one_unique_column'))
+        self.assertEqual(fk.referenced_columns, [self.case('col')])
         
     def test_table_reference_two_tables(self):
-        table = self.db.tables['reference_two_tables']
+        table = self.db.tables[self.case('reference_two_tables')]
         self.assertEqual(len(table.foreign_keys), 2)
         
     def test_table_SoMe_TaBlE(self):
         if self.USES_CASE_SENSITIVE_IDENTIFIERS:
             table = self.db.tables['SoMe_TaBlE']
-            self.assertTrue(table.has_case_sensitive_name)
         else:
-            table = self.db.tables['some_table']
-            self.assertFalse(table.has_case_sensitive_name)
+            table = self.db.tables[self.case('some_table')]
     
     def test_table_case_sensitive_column(self):
-        table = self.db.tables['case_sensitive_column']
-        self.assertFalse(table.has_case_sensitive_name)
+        table = self.db.tables[self.case('case_sensitive_column')]
         if self.USES_CASE_SENSITIVE_IDENTIFIERS:
             column = table.columns['SoMe_CoLuMn']
-            self.assertTrue(column.has_case_sensitive_name)
             self.assertEqual(column.name, 'SoMe_CoLuMn')
         else:
-            column = table.columns['some_column']
-            self.assertFalse(column.has_case_sensitive_name)
-            self.assertEqual(column.name, 'some_column')
+            column = table.columns[self.case('some_column')]
+            self.assertEqual(column.name, self.case('some_column'))
         self.assertEqual(column.type, self.DEFAULT_INTEGER_TYPE_NAME)
             
     # view tests
@@ -338,8 +341,9 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
                          set(self.VIEWS.keys()))
         
     def test_view_one_column_view(self):
-        view = self.db.views['one_column_view']
-        self.assertEqual(set(view.columns.keys()), set(['col']))
+        view = self.db.views[self.case('one_column_view')]
+        self.assertEqual(set(view.columns.keys()), 
+                         set([self.case('col')]))
 
     # trigger tests
     
@@ -347,8 +351,8 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self.assertEqual(set(self.db.triggers.keys()), self.TRIGGERS.keys())
         
     def test_trigger_before_insert_trigger(self):
-        trigger = self.db.triggers['before_insert_trigger']
-        self.assertEqual(trigger.table, 'one_column')
+        trigger = self.db.triggers[self.case('before_insert_trigger')]
+        self.assertEqual(trigger.table, self.case('one_column'))
         self.assertEqual(trigger.when, Trigger.BEFORE)
         self.assertEqual(trigger.event, Trigger.INSERT)
         
@@ -409,7 +413,9 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     @staticmethod
     def substitute_quote_char(string):
         return string
-
+        
+    def case(self, string):
+        return string.lower()
 
 class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
     
@@ -423,7 +429,6 @@ class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
             self._add_operation(self.INDICES.values())
             self._add_triggers()
         except self.DATABASE_ERRORS as e:
-            print(e)
             self.tearDown()
             raise
             
@@ -732,27 +737,45 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     PASSWORD = 'fathom'
     
     DATABASE_ERRORS = oracle_errors
-    DEFAULT_INTEGER_TYPE_NAME = 'number'
+    DEFAULT_INTEGER_TYPE_NAME = 'NUMBER'
     HAS_USABLE_INDEX_NAMES = False
     
-    PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()    
-    PROCEDURES['foo_double'] = '''
+    TABLES = {}
+    for key, value in DatabaseWithProceduresTestCase.TABLES.items():
+        name = key.upper() if key.lower() == key else key
+        TABLES[name] = value
+    # oracle doesn't accept reserved words as identifiers at all
+    TABLES.pop('reserved_word_column'.upper())
+        
+    TRIGGERS = {}
+    for key, value in DatabaseWithProceduresTestCase.TRIGGERS.items():
+        name = key.upper() if key.lower() == key else key
+        TRIGGERS[name] = value
+        
+    INDICES = {}
+    for key, value in DatabaseWithProceduresTestCase.INDICES.items():
+        name = key.upper() if key.lower() == key else key
+        INDICES[name] = value
+    
+    VIEWS = {}
+    for key, value in DatabaseWithProceduresTestCase.VIEWS.items():
+        name = key.upper() if key.lower() == key else key
+        VIEWS[name] = value
+                
+    PROCEDURES = {}
+    PROCEDURES['FOO_DOUBLE'] = '''
 CREATE FUNCTION foo_double 
     RETURN VARCHAR2 IS
     BEGIN 
         RETURN 'dd'; 
     END;
 '''
-    PROCEDURES['simple_proc'] = '''
+    PROCEDURES['SIMPLE_PROC'] = '''
 CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
     BEGIN
         suchar := 'f';
     END;
 '''
-    
-    TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
-    # oracle doesn't accept reserved words as identifiers
-    TABLES.pop('reserved_word_column')
 
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
@@ -773,6 +796,9 @@ CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
         
     def pkey_index_name(self, table_name, *columns):
         return ''
+
+    def case(self, string):
+        return string.upper()
 
     @classmethod
     def _get_connection(Class):
@@ -890,7 +916,6 @@ class DatabaseDiffTestCase(TestCase):
         self.table1.columns = {}
         self.table2 = Table('table_2')
         self.table2.columns = {}
-
 
         self.base_db = Database(name='base')
         self.dest_db = Database(name='dest')
