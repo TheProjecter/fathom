@@ -141,10 +141,6 @@ CREATE TABLE reference_two_tables (
 CREATE TABLE "SoMe_TaBlE" (
     col integer
 )'''),
-    ('some_table', '''
-CREATE TABLE some_table (
-    col integer
-)'''),
     ('case_sensitive_column', '''
 CREATE TABLE case_sensitive_column (
     "SoMe_CoLuMn" InTeGeR
@@ -424,6 +420,13 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
 class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
     
     PROCEDURES = {}
+    
+    TABLES = AbstractDatabaseTestCase.TABLES.copy()
+    TABLES['some_table'] = '''
+CREATE TABLE some_table (
+    col integer
+)'''
+
 
     def setUp(self):
         try:
