@@ -427,7 +427,6 @@ CREATE TABLE some_table (
     col integer
 )'''
 
-
     def setUp(self):
         try:
             self._add_operation(self.TABLES.values())
@@ -480,7 +479,7 @@ class PostgresTestCase(DatabaseWithProceduresTestCase, TestCase):
     USER = 'fathom'
     DATABASE_ERRORS = postgres_errors
     
-    TABLES = AbstractDatabaseTestCase.TABLES.copy()
+    TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     TABLES['empty'] = '''CREATE TABLE empty()'''
 
     PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
