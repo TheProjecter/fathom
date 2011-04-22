@@ -11,16 +11,35 @@ environment.
 the current directory on wihch all operations are performed.
 
 2. PostgreSQL - Beside having PostgreSQL server installed and running, you 
-need to create database named 'fathom' and user named 'fathom'. You also need
-to edit pg_hba.conf, so it will allow 'fathom' to access 'fathom' database
-without a password; this requires using 'trust' setting. To access this DBMS
-from Python you need to have psycopg2 installed for python3.
+need to create database named 'fathom' and user named 'fathom':
 
-3. MySQL - Beside having MySQL server installed and running, you need to
-create database named 'fathom' and user named 'fathom'. Furthermore you need to
-grant him all privilages required to access all kinds of objects in 'fathom'
-database and possibly information_schema tables. To access this DBMS from
-Python you need to have pymysql3 package installed for python3.
+$ sudo su postgres
+$ createuser fathom
+$ createdb fathom
+
+You also need to create plpgsql language in fathom database:
+
+$ psql fathom
+fathom=# CREATE LANGUAGE plpgsql;
+
+Furthermore you have to edit pg_hba.conf, so it will allow 'fathom' to access 
+'fathom' database without a password; this requires using 'trust' setting. To 
+access this DBMS from Python you need to have psycopg2 installed for python3.
+
+3. MySQL - Beside having MySQL server installed and running, you need to create 
+database named 'fathom' and user named 'fathom'. 
+
+$ mysql -u root -p
+mysql> create database fathom;
+mysql> create user fathom;
+
+Furthermore you need to grant him all privilages required to access all kinds 
+of objects in 'fathom' database and possibly information_schema tables. 
+
+mysql> grant all privileges on fathom.* to 'fathom'@'localhost'
+
+To access this DBMS fromPython you need to have pymysql3 package installed for 
+python3.
 
 4. Oracle - Beside having Oracle server installed and running you need to
 create user named 'fathom' with password 'fathom'. To access this DBMS from
