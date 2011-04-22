@@ -55,6 +55,7 @@ from fathom import (get_sqlite3_database, get_postgresql_database,
                     get_database_type, FathomError, find_accessing_procedures)
 from fathom.diff import DatabaseDiff, UNCHANGED, CREATED, ALTERED, DROPPED
 from fathom.schema import Trigger,Table,Column,Database
+from fathom import constants
 
 try:
     import psycopg2
@@ -379,6 +380,10 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
 
     def test_supports_procedures(self):
         self.assertTrue(self.db.supports_stored_procedures())
+
+    def test_case_sensitivity(self):
+        self.assertEqual(self.db.case_sensitivity, 
+                         constants.CASE_SENSITIVE_QUOTED)
         
     @abstractmethod
     def index_name(self, table_name, *columns, count=None):
@@ -735,6 +740,9 @@ CREATE PROCEDURE get_accessing_procedures_1()
         
     # tests
     
+    def test_case_sensitivity(self):
+        self.assertEqual(self.db.case_sensitivity, constants.CASE_SENSITIVE)
+    
     @procedure_test('foo_double', 0, 'integer')
     def test_foo_double(self, procedure):
         self.assertEqual(procedure.sql, 'RETURN 2 * value')
@@ -822,6 +830,10 @@ CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
     def setUp(self):
         DatabaseWithProceduresTestCase.setUp(self)
         self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
+
+    def test_case_sensitivity(self):
+        self.assertEqual(self.db.case_sensitivity, 
+                         constants.CASE_SENSITIVE_QUOTED)
         
     # procedure tests
     
@@ -886,7 +898,10 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
 
     def test_supports_procedures(self):
         self.assertFalse(self.db.supports_stored_procedures())
-    
+        
+    def test_case_sensitivity(self):
+        self.assertEqual(self.db.case_sensitivity, constants.CASE_INSENSITIVE)
+            
     def test_sqlite_table_django_admin_log(self):
         table = self.db.tables['django_admin_log']
         values = (('id', 'integer', True), ('action_time', 'datetime', True),

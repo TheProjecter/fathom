@@ -5,6 +5,7 @@ from abc import ABCMeta, abstractmethod
 from .errors import FathomError, FathomParsingError
 from .schema import (Database, Table, Column, View, Index, Procedure, Argument,
                      Trigger, ForeignKey)
+from . import constants
 
 TRIGGER_WHEN_NAMES = {'AFTER': Trigger.AFTER, 'BEFORE': Trigger.BEFORE}
 TRIGGER_EVENT_NAMES = {'INSERT': Trigger.INSERT, 'UPDATE': Trigger.UPDATE,
@@ -18,6 +19,8 @@ class DatabaseInspector(metaclass=ABCMeta):
     # get case sensitive names by quoting, so "AaA" keeps capital letters
     USES_CASE_SENSITIVE_IDS = True
     
+    CASE_SENSITIVITY = constants.CASE_SENSITIVE_QUOTED
+        
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
@@ -104,7 +107,9 @@ class SqliteInspector(DatabaseInspector):
     # Sqlite3 doesn't give a flying fuck about case sensitivity, so 
     # "AaA" == "aaa"
     USES_CASE_SENSITIVE_IDS = False
-    
+
+    CASE_SENSITIVITY = constants.CASE_INSENSITIVE
+
     _TABLE_NAMES_SQL = """SELECT name 
                           FROM sqlite_master
                           WHERE type = 'table'"""
@@ -387,6 +392,8 @@ class MySqlInspector(DatabaseInspector):
 
     INTEGER_TYPES = ('int',)
     FLOAT_TYPES = ('float',)
+
+    CASE_SENSITIVITY = constants.CASE_SENSITIVE
 
     _TABLE_NAMES_SQL = """
 SELECT TABLE_NAME
