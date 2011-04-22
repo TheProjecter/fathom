@@ -923,16 +923,20 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
 
 class DatabaseTypeTestCase(TestCase):
     
+    @skipUnless(TEST_SQLITE, 'Failed to import sqlite3 module.')
     def test_sqlite(self):
         self.assertEqual(get_database_type('fathom.db3'), 'Sqlite3')
-        
+    
+    @skipUnless(TEST_MYSQL, 'Failed to import pymysql module.')
     def test_mysql(self):
         self.assertEqual(get_database_type(user='fathom', db='fathom'), 'MySQL')
         
+    @skipUnless(TEST_POSTGRES, 'Failed to import psycopg2 module.')
     def test_postgres(self):
         self.assertEqual(get_database_type('dbname=fathom user=fathom'),
                          'PostgreSQL')
     
+    @skipUnless(TEST_ORACLE, 'Failed to import cx_Oracle module.')
     def test_oracle(self):
         self.assertEqual(get_database_type('fathom', 'fathom'), 'Oracle')
     
