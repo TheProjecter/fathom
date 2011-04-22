@@ -22,6 +22,10 @@ class Database(Named):
         self._procedures = None
         self._triggers = None
         
+    def _get_case_sensitivity(self):
+        return self.inspector.CASE_SENSITIVITY
+    case_sensitivity = property(_get_case_sensitivity)
+        
     def get_refresh_method(name):
         def refresh_attribute(self):
             if self.inspector is not None:
