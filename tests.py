@@ -657,7 +657,7 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
         
     def test_find_accessing_procedures2(self):
         procedures = find_accessing_procedures(self.db.tables['SoMe_TaBlE'])
-        names = []
+        names = ['get_accessing_procedures_4()']
         self.assertEqual(set(procedures), set(names))
         
     def test_find_accessing_procedures3(self):
