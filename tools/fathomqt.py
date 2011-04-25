@@ -3,11 +3,16 @@
 from sys import argv
 from os.path import join
 
-from PyQt4.QtCore import (QDir, SIGNAL, Qt)
+from PyQt4.QtCore import (QDir, SIGNAL, Qt, QAbstractItemModel, QModelIndex,
+                          QVariant)
 from PyQt4.QtGui import (QDialog, QHBoxLayout, QWidget, QLabel, QStackedWidget,
                          QRadioButton, QLineEdit, QTreeView, QGridLayout,
                          QVBoxLayout, QPushButton, QFileSystemModel, 
-                         QApplication)
+                         QApplication, QTreeView)
+
+from fathom import (get_sqlite3_database, get_postgresql_database, 
+                    get_mysql_database)
+from fathom.schema import Database
 
 class QConnectionDialog(QDialog):
     
@@ -167,6 +172,52 @@ class QConnectionDialog(QDialog):
         return self.stackedWidget.currentWidget().getDatabaseParams()
 
 
+class FathomModel(QAbstractItemModel):
+    
+    def __init__(self, parent=None):
+        QAbstractItemModel.__init__(self, parent)
+        self._databases = []
+        
+    def addDatabase(self, database):
+        self._databases.append(database)
+        
+    def index(self, row, column, parent):
+        if not self.hasIndex(row, column, parent):
+            return QModelIndex()
+        if parent.isValid():
+            return QModelIndex()
+        if len(self._databases) > row:
+            print(row, column, 'creating nice index')
+            return self.createIndex(row, column, self._databases[row])
+        else:
+            return QModelIndex()
+            
+    def parent(self, index):
+        return QModelIndex()
+            
+    def rowCount(self, parent):
+        if not parent.isValid():
+            return len(self._databases)
+        else:
+            return 0
+            
+    def columnCount(self, parent):
+        return 1
+            
+    def data(self, index, role):
+        if not index.isValid() or role != Qt.DisplayRole:
+            return None
+        if index.internalPointer() is None:
+            return ''
+        return index.internalPointer().name
+
 if __name__ == "__main__":
     app = QApplication(argv)
-    QConnectionDialog().exec()
+    view = QTreeView()
+    model = FathomModel()
+    model.addDatabase(get_postgresql_database('dbname=fathom username=fathom'))
+    model.addDatabase(get_sqlite3_database('fathom.db3'))
+    model.addDatabase(get_mysql_database(db='fathom', user='fathom'))
+    view.setModel(model)
+    view.show()
+    app.exec()
