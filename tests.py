@@ -736,7 +736,6 @@ CREATE TABLE reference_two_tables (
     FOREIGN KEY (ref2) REFERENCES primary_key_only(id)
 ) ENGINE = INNODB'''
 
-
     PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
     PROCEDURES['foo_double'] = '''
 CREATE FUNCTION foo_double (value int4)
@@ -752,6 +751,12 @@ END;
 CREATE PROCEDURE get_accessing_procedures_1()
     BEGIN
         SELECT * FROM one_column;
+    END'''
+    
+    PROCEDURES['get_accessing_procedures_2'] = '''
+CREATE PROCEDURE get_accessing_procedures_2()
+    BEGIN
+        SELECT * FROM ONE_column;
     END'''
     
     def setUp(self):
