@@ -16,9 +16,7 @@ class DatabaseInspector(metaclass=ABCMeta):
     '''Abstract base class for database system inspectors.'''
 
     # in most databases aaa, AaA and aAa is turned into "aaa" and you can
-    # get case sensitive names by quoting, so "AaA" keeps capital letters
-    USES_CASE_SENSITIVE_IDS = True
-    
+    # get case sensitive names by quoting, so "AaA" keeps capital letters    
     CASE_SENSITIVITY = constants.CASE_SENSITIVE_QUOTED
         
     def __init__(self, *args, **kwargs):
@@ -60,7 +58,8 @@ class DatabaseInspector(metaclass=ABCMeta):
         sql = self._COLUMN_NAMES_SQL % schema_object.name
         columns = {}
         for row in self._select(sql):
-            name = row[0] if self.USES_CASE_SENSITIVE_IDS else row[0].lower()
+            case_sensitve = self.CASE_SENSITIVITY != constants.CASE_INSENSITIVE
+            name = (row[0] if case_sensitve else row[0].lower())
             columns[name] = self.prepare_column(row)
         schema_object.columns = columns
 
@@ -97,7 +96,7 @@ class DatabaseInspector(metaclass=ABCMeta):
         return rows
         
     def case(self, string):
-        if self.USES_CASE_SENSITIVE_IDS:
+        if self.CASE_SENSITIVITY != constants.CASE_INSENSITIVE:
             return string
         return string.lower()
 
@@ -106,8 +105,6 @@ class SqliteInspector(DatabaseInspector):
 
     # Sqlite3 doesn't give a flying fuck about case sensitivity, so 
     # "AaA" == "aaa"
-    USES_CASE_SENSITIVE_IDS = False
-
     CASE_SENSITIVITY = constants.CASE_INSENSITIVE
 
     _TABLE_NAMES_SQL = """SELECT name 
@@ -214,6 +211,8 @@ class PostgresInspector(DatabaseInspector):
 
     INTEGER_TYPES = ('integer', 'int4', 'int2')
     FLOAT_TYPES = ('float',)
+    
+    CASE_SENSITIVITY = constants.CASE_SENSITIVE_QUOTED
     
     _TABLE_NAMES_SQL = """
 SELECT table_name 
