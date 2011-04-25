@@ -8,6 +8,7 @@ except ImportError:
     from ._argparse import ArgumentParser
 
 from .errors import FathomError
+from . import constants
 
 class FathomArgumentParser(ArgumentParser):
     
@@ -143,14 +144,19 @@ def _try_oracle(username, password):
     return True
 
 def find_accessing_procedures(table):
-    
     '''Provides list with names of procedures that access in some way the given
     table.'''
-    case = table.database.case
+    
+    case_sensitivity = table.database.case_sensitivity
+    assert (case_sensitivity in constants.CASE_SENSITIVITY,
+            'Unknown type of case sensitivity!')
     procedures = table.database.procedures
-    if table.name == case(table.name):
+    if case_sensitivity == constants.CASE_SENSITIVE:
+        return [procedure.name for procedure in procedures.values()
+                               if table.name in procedure.sql]        
+    elif case_sensitivity == constants.CASE_SENSITIVE_QUOTED:
+        pass
+    else: # case_sensitivity == constants.CASE_INSENSITIVE:
         return [procedure.name for procedure in table.database.procedures.values()
                                if case(table.name) in case(procedure.sql)]
-    else:
-        return [procedure.name for procedure in procedures.values()
-                               if table.name in procedure.sql]
+        
