@@ -582,6 +582,13 @@ CREATE FUNCTION get_accessing_procedures_4() RETURNS VOID AS $$
     END;
 $$ LANGUAGE plpgsql'''
 
+    PROCEDURES['get_accessing_procedures_5()'] = '''
+CREATE FUNCTION get_accessing_procedures_5() RETURNS VOID AS $$
+    BEGIN
+        SELECT * FROM "some_TABLE";
+    END;
+$$ LANGUAGE plpgsql'''
+
     # postgresql defines only subset of sql CREATE TRIGGER statement, that's
     # why keep separate dictionary of trigger fixtures and also must keep
     # table names to drop trigger properly
