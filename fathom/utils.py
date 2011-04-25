@@ -144,19 +144,52 @@ def _try_oracle(username, password):
     return True
 
 def find_accessing_procedures(table):
-    '''Provides list with names of procedures that access in some way the given
+    '''Provides list of procedure names that access in some way the given
     table.'''
     
     case_sensitivity = table.database.case_sensitivity
-    assert (case_sensitivity in constants.CASE_SENSITIVITY,
-            'Unknown type of case sensitivity!')
+    assert case_sensitivity in constants.CASE_SENSITIVITY, \
+            'Unknown type of case sensitivity!'
     procedures = table.database.procedures
     if case_sensitivity == constants.CASE_SENSITIVE:
         return [procedure.name for procedure in procedures.values()
                                if table.name in procedure.sql]        
     elif case_sensitivity == constants.CASE_SENSITIVE_QUOTED:
-        pass
+        return _find_accessing_procedures_quoted(table, procedures)
     else: # case_sensitivity == constants.CASE_INSENSITIVE:
         return [procedure.name for procedure in table.database.procedures.values()
                                if case(table.name) in case(procedure.sql)]
-        
+
+def _find_accessing_procedures_quoted(table, procedures):
+    result = []
+    lower_name = table.name.lower()
+    for procedure in procedures.values():
+        indices = find_occurances(procedure.sql.lower(), lower_name)
+        for index in indices:
+            if _check_name_quoted(table.name, procedure.sql, index):
+                result.append(procedure.name)
+                break
+    return result
+
+_SEPARATING_CHARS = [' ', ';', '\n']
+
+def _check_name_quoted(name, sql, index):
+    if index == 0:
+        return True
+    if (name == name.lower() and
+        sql[index - 1] in _SEPARATING_CHARS and 
+        sql[index + len(name)] in _SEPARATING_CHARS):
+        return True
+    if (sql[index - 1] == '"' and sql[index + len(name)] == '"' and 
+        name == sql[index:index + len(name)]):
+        return True
+    return False
+
+def find_occurances(string, sub):
+    result = []
+    while True:
+        index = string.find(sub)
+        if index == -1:
+            return result
+        result.append(index)
+        string = string[index + len(sub):]
