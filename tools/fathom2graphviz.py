@@ -16,16 +16,20 @@ def table_node(table, args):
     if not args.include_columns:
         print(' "%s"[shape=box];' % table.name)
     else:
-        columns = ['<tr><td>%s: %s</td></tr>' % (column.name, column.type) 
-                   for column in table.columns.values()]
+        columns = []
+        for column in table.columns.values():
+            args = (column.name, column.name, column.type)
+            columns.append('<tr><td port="%s">%s: %s</td></tr>' % args)
         columns = ''.join(columns)
         label = '<table><tr><td bgcolor="lightgrey">%s</td></tr>%s</table>' % \
                 (table.name, columns)
-        print(' "%s"[shape=none,label=<%s>];' % (table.name, label))
+        print(' "%s"[shape=none,label=<%s>];' % (table.name, label))                
 
 def table_connections(table):
     for fk in table.foreign_keys:
-        print(' "%s" -> "%s";' % (table.name, fk.referenced_table))
+        args = (table.name, fk.columns[0], fk.referenced_table, 
+                fk.referenced_columns[0])
+        print(' %s:%s -> %s:%s;' % args)
 
 def main():
     parser = FathomArgumentParser(description=DESCRIPTION)
