@@ -168,7 +168,10 @@ CREATE TABLE case_sensitive_column (
 ))
     
     VIEWS = {
-        'one_column_view': '''CREATE VIEW one_column_view AS SELECT col FROM one_column''',
+        'one_column_view': '''
+CREATE VIEW one_column_view AS SELECT col FROM one_column''',
+        'CASE_sensitive_VIEW': '''
+CREATE VIEW "CASE_sensitive_VIEW" AS SELECT col FROM one_column'''
     }
     
     INDICES = {
