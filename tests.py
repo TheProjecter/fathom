@@ -365,8 +365,11 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         
     def test_view_one_column_view(self):
         view = self.db.views[self.case('one_column_view')]
-        self.assertEqual(set(view.columns.keys()), 
-                         set([self.case('col')]))
+        self.assertEqual(set(view.columns.keys()), set([self.case('col')]))
+                         
+    def test_view_case_sensitive_view(self):
+        view = self.db.views['CASE_sensitive_VIEW']
+        self.assertEqual(set(view.columns.keys()), set([self.case('col')]))
 
     # trigger tests
     
