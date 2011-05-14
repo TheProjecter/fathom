@@ -566,7 +566,7 @@ WHERE argument_name IS NOT NULL AND object_name = upper('%s')
 SELECT column_name, data_type, data_length, data_default, 
        upper(nullable)
 FROM all_tab_columns
-WHERE table_name = upper('%s')
+WHERE table_name = '%s'
 """
     
     _TABLE_INDEX_NAMES_SQL = """
