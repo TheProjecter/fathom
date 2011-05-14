@@ -1129,6 +1129,22 @@ class DatabaseDiffTestCase(TestCase):
         self.assertState(diff.tables['table'], ALTERED)
         self.assertTrue('col_1' in diff.tables['table'].columns)
         self.assertState(diff.tables['table'].columns['col_1'], ALTERED)
+        
+    def test_changed_column2(self):
+        source_table = Table('table')
+        source_table.columns = {'col_1': Column('col_1', 'varchar(10)',
+                                                not_null=True)}
+        dest_table = Table('table')
+        dest_table.columns = {'col_1': Column('col_1', 'varchar(10)',
+                                              not_null=False)}
+        self.base_db.tables = {'table': source_table}
+        self.dest_db.tables = {'table': dest_table}
+        
+        diff = DatabaseDiff(self.base_db, self.dest_db)
+        self.assertTrue('table' in diff.tables)
+        self.assertState(diff.tables['table'], ALTERED)
+        self.assertTrue('col_1' in diff.tables['table'].columns)
+        self.assertState(diff.tables['table'].columns['col_1'], ALTERED)
 
 
 if __name__ == "__main__":

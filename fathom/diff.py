@@ -17,7 +17,9 @@ class ColumnDiff(object):
             elif self.source_col is not None and self.dest_col is None:
                 self._state = DROPPED
             else:
-                if self.source_col.type == self.dest_col.type:
+                if (self.source_col.type == self.dest_col.type and
+                    self.source_col.not_null == self.dest_col.not_null and
+                    self.source_col.default == self.dest_col.default):
                     self._state = UNCHANGED
                 else:
                     self._state = ALTERED
@@ -73,20 +75,15 @@ class TableDiff(object):
     columns = property(_get_columns)
 
 
-
-
 class DatabaseDiff(object):
 
-    def __init__(self, db1, db2):
+    def __init__(self, source_db, dest_db):
         super(DatabaseDiff, self).__init__()
-        if db1 is None or db2 is None:
+        if source_db is None or dest_db is None:
             raise ValueError
-
-        self.source_db = db1
-        self.dest_db = db2
-
+        self.source_db = source_db
+        self.dest_db = dest_db
         self._tables = None 
-
     
     def _find_tables_matching(self):
 
