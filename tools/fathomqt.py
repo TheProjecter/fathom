@@ -174,6 +174,18 @@ class QConnectionDialog(QDialog):
 
 class FathomModel(QAbstractItemModel):
     
+    class DatabaseItem:
+        
+        def __init__(self, db):
+            self.db = db
+            
+    
+    class TableListItem:
+        
+        def __init__(self, parent):
+            self.parent = parent
+
+
     def __init__(self, parent=None):
         QAbstractItemModel.__init__(self, parent)
         self._databases = []
@@ -187,7 +199,6 @@ class FathomModel(QAbstractItemModel):
         if parent.isValid():
             return QModelIndex()
         if len(self._databases) > row:
-            print(row, column, 'creating nice index')
             return self.createIndex(row, column, self._databases[row])
         else:
             return QModelIndex()
