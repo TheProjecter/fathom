@@ -4,15 +4,61 @@ from sys import argv
 from os.path import join
 
 from PyQt4.QtCore import (QDir, SIGNAL, Qt, QAbstractItemModel, QModelIndex,
-                          QVariant)
+                          QVariant, QCoreApplication, QEvent)
 from PyQt4.QtGui import (QDialog, QHBoxLayout, QWidget, QLabel, QStackedWidget,
                          QRadioButton, QLineEdit, QTreeView, QGridLayout,
-                         QVBoxLayout, QPushButton, QFileSystemModel, 
-                         QApplication, QTreeView)
+                         QVBoxLayout, QPushButton, QFileSystemModel, QIcon,
+                         QApplication, QTreeView, QMainWindow, QAction,
+                         QTabWidget, QMenu)
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database)
 from fathom.schema import Database
+
+_ = lambda string: QCoreApplication.translate('', string)
+
+class QClickableTabWidget(QTabWidget):
+
+    def __init__(self, allowEmpty=True, parent=None):
+        QTabWidget.__init__(self, parent)
+        self._allowEmpty = allowEmpty
+        self.installEventFilter(self)
+        
+    def eventFilter(self, target, event):
+        if event.type() != QEvent.MouseButtonPress:
+            return QTabWidget.eventFilter(self, target, event)
+        position = event.pos()
+        tab = -1
+        for index in range(self.tabBar().count()):
+            if self.tabBar().tabRect(index).contains(position):
+                tab = index
+                break
+        if tab == -1:
+            return QTabWidget.eventFilter(self, target, event)
+        if event.button() == Qt.RightButton:
+            menu = QMenu()
+            actions = ((self.tr('Close'), 'triggered()', self.close),
+                       (self.tr('Close other'), 'triggered()', self.closeOther))
+            for title, signal, slot in actions:
+                action = QAction(title, self)
+                self.connect(action, SIGNAL(signal), slot)
+                menu.addAction(action)
+            self.selection = index
+            menu.exec(event.globalPos())
+            self.selection = None
+            return True
+
+    def close(self):
+        if not self._allowEmpty and self.tabBar().count() == 1:
+            return
+        self.removeTab(self.selection)
+        
+    def closeOther(self):
+        for i in range(self.selection):
+            self.removeTab(0)
+        while self.tabBar().count() > 1:
+            self.removeTab(1)
+
 
 class QConnectionDialog(QDialog):
     
@@ -174,16 +220,96 @@ class QConnectionDialog(QDialog):
 
 class FathomModel(QAbstractItemModel):
     
-    class DatabaseItem:
+    class Item:
         
-        def __init__(self, db):
+        def __init__(self, parent, row):
+            self._parent = parent
+            self._row = row
+            
+        def row(self):
+            return self._row
+            
+        def parent(self):
+            return self._parent
+    
+    class DatabaseItem(Item):
+        
+        def __init__(self, db, row):
+            FathomModel.Item.__init__(self, None, row)
             self.db = db
+            self.children = [FathomModel.TableListItem(list(db.tables.values()),
+                                                       self, 0), 
+                             FathomModel.ViewListItem(list(db.views.values()),
+                                                      self, 1),
+                             FathomModel.TriggerListItem(list(db.triggers.values()), 
+                                                         self, 2)]
+
+        def childrenCount(self):
+            return 3
+            
+        def child(self, row):
+            return self.children[row]
+                             
+        def name(self):
+            return self.db.name
+
+    
+    class TableListItem(Item):
+        
+        def __init__(self, tables, parent, row):
+            FathomModel.Item.__init__(self, parent, row)
+            self._tables = tables
+            Class = FathomModel.TableItem
+            self.children = [Class(table, self, row) 
+                             for row, table in enumerate(self._tables)]
+        
+        def childrenCount(self):
+            return len(self._tables)
+            
+        def child(self, row):
+            return self.children[row]
+            
+        def name(self):
+            return _('Tables')
+
+
+    class ViewListItem(Item):
+        
+        def __init__(self, views, parent, row):
+            FathomModel.Item.__init__(self, parent, row)
+            self._views = views
+
+        def childrenCount(self):
+            return 0
+                        
+        def name(self):
+            return _('Views')
             
     
-    class TableListItem:
+    class TriggerListItem(Item):
         
-        def __init__(self, parent):
-            self.parent = parent
+        def __init__(self, triggers, parent, row):
+            FathomModel.Item.__init__(self, parent, row)
+            self._triggers = triggers
+            
+        def childrenCount(self):
+            return 0
+            
+        def name(self):
+            return _('Triggers')
+
+
+    class TableItem(Item):
+        
+        def __init__(self, table, parent, row):
+            FathomModel.Item.__init__(self, parent, row)
+            self._table = table
+            
+        def childrenCount(self):
+            return 0
+        
+        def name(self):
+            return self._table.name
 
 
     def __init__(self, parent=None):
@@ -191,44 +317,96 @@ class FathomModel(QAbstractItemModel):
         self._databases = []
         
     def addDatabase(self, database):
-        self._databases.append(database)
+        self._databases.append(self.DatabaseItem(database, 
+                                                 len(self._databases)))
         
     def index(self, row, column, parent):
         if not self.hasIndex(row, column, parent):
             return QModelIndex()
         if parent.isValid():
-            return QModelIndex()
+            parent = parent.internalPointer()
+            if parent.childrenCount() > row:
+                return self.createIndex(row, column, parent.child(row))
+            else:
+                return QModelIndex()
         if len(self._databases) > row:
             return self.createIndex(row, column, self._databases[row])
         else:
             return QModelIndex()
             
     def parent(self, index):
-        return QModelIndex()
+        if not index.isValid() or index.internalPointer().parent() is None:
+            return QModelIndex()
+        parent = index.internalPointer().parent()
+        return self.createIndex(parent.row(), 0, parent)
             
     def rowCount(self, parent):
         if not parent.isValid():
             return len(self._databases)
         else:
-            return 0
+            return parent.internalPointer().childrenCount()
             
     def columnCount(self, parent):
         return 1
             
     def data(self, index, role):
-        if not index.isValid() or role != Qt.DisplayRole:
-            return None
-        if index.internalPointer() is None:
-            return ''
-        return index.internalPointer().name
+        if index.isValid() and role in (Qt.DisplayRole, Qt.DecorationRole):
+            if role == Qt.DisplayRole:
+                return index.internalPointer().name()
+            if role == Qt.DecorationRole:
+                return QIcon('icons/database.png')
+        return None
+
+
+class MainWidget(QWidget):
+    
+    def __init__(self, parent=None):
+        QWidget.__init__(self, parent)
+        self.setLayout(QHBoxLayout())
+
+        view = QTreeView()
+        view.header().hide()
+        view.setExpandsOnDoubleClick(False)
+        model = FathomModel()
+        model.addDatabase(get_postgresql_database('dbname=django user=django'))
+        model.addDatabase(get_sqlite3_database('fathom.db3'))
+        view.setModel(model)
+        
+        self.display = QClickableTabWidget()
+
+        self.layout().addWidget(view)
+        self.layout().addWidget(self.display)
+        
+        self.connect(view, SIGNAL('doubleClicked(const QModelIndex &)'),
+                     self.openElement)
+                     
+    def openElement(self, index):
+        name = index.internalPointer().name()
+        self.display.addTab(QLabel(name), name)
+
+
+class MainWindow(QMainWindow):
+    
+    def __init__(self, parent=None):
+        QMainWindow.__init__(self, parent=parent)
+        self.setWindowIcon(QIcon('icons/database.png'))
+        self.setWindowTitle('QFathom')
+        self.setCentralWidget(MainWidget())
+        menu = self.menuBar().addMenu(self.tr('Connection'))
+
+        action = QAction(QIcon('icons/add_database.png'), 
+                         self.tr('Add &new..'), self)
+        action.setIconVisibleInMenu(True)
+        self.connect(action, SIGNAL('triggered()'), self.addConnection)
+        menu.addAction(action)
+        
+    def addConnection(self):
+        dialog = QConnectionDialog()
+        dialog.exec()
+
 
 if __name__ == "__main__":
     app = QApplication(argv)
-    view = QTreeView()
-    model = FathomModel()
-    model.addDatabase(get_postgresql_database('dbname=fathom username=fathom'))
-    model.addDatabase(get_sqlite3_database('fathom.db3'))
-    model.addDatabase(get_mysql_database(db='fathom', user='fathom'))
-    view.setModel(model)
-    view.show()
+    window = MainWindow()
+    window.show()
     app.exec()
