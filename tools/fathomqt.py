@@ -12,7 +12,7 @@ from PyQt4.QtGui import (QDialog, QHBoxLayout, QWidget, QLabel, QStackedWidget,
                          QTabWidget, QMenu)
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
-                    get_mysql_database)
+                    get_mysql_database, TYPE_TO_FUNCTION)
 from fathom.schema import Database
 
 _ = lambda string: QCoreApplication.translate('', string)
@@ -122,10 +122,10 @@ class QConnectionDialog(QDialog):
             index = self.view.currentIndex()
             result = []
             while index.isValid():
-                result.append(unicode(index.data().toString()))
+                result.append(index.data())
                 index = index.parent()
             result.reverse()
-            return 'sqlite3', join(*result)
+            return 'Sqlite3', join(*result)
             
     
     class MySqlWidget(QWidget):
@@ -212,8 +212,8 @@ class QConnectionDialog(QDialog):
         
     def accept(self):
         if self.stackedWidget.currentWidget().validate():
-            QDialog.accept(self)
-            
+            return QDialog.accept(self)
+                        
     def getDatabaseParams(self):
         return self.stackedWidget.currentWidget().getDatabaseParams()
 
@@ -317,8 +317,11 @@ class FathomModel(QAbstractItemModel):
         self._databases = []
         
     def addDatabase(self, database):
+        count = len(self._databases)
+        self.beginInsertRows(QModelIndex(), count, count + 1)
         self._databases.append(self.DatabaseItem(database, 
                                                  len(self._databases)))
+        self.endInsertRows()
         
     def index(self, row, column, parent):
         if not self.hasIndex(row, column, parent):
@@ -367,10 +370,8 @@ class MainWidget(QWidget):
         view = QTreeView()
         view.header().hide()
         view.setExpandsOnDoubleClick(False)
-        model = FathomModel()
-        model.addDatabase(get_postgresql_database('dbname=django user=django'))
-        model.addDatabase(get_sqlite3_database('fathom.db3'))
-        view.setModel(model)
+        self.model = FathomModel()
+        view.setModel(self.model)
         
         self.display = QClickableTabWidget()
 
@@ -383,6 +384,9 @@ class MainWidget(QWidget):
     def openElement(self, index):
         name = index.internalPointer().name()
         self.display.addTab(QLabel(name), name)
+        
+    def addDatabase(self, db):
+        self.model.addDatabase(db)
 
 
 class MainWindow(QMainWindow):
@@ -391,7 +395,9 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self, parent=parent)
         self.setWindowIcon(QIcon('icons/database.png'))
         self.setWindowTitle('QFathom')
-        self.setCentralWidget(MainWidget())
+        
+        self.widget = MainWidget()
+        self.setCentralWidget(self.widget)
         menu = self.menuBar().addMenu(self.tr('Connection'))
 
         action = QAction(QIcon('icons/add_database.png'), 
@@ -402,7 +408,16 @@ class MainWindow(QMainWindow):
         
     def addConnection(self):
         dialog = QConnectionDialog()
-        dialog.exec()
+        if dialog.exec() == QDialog.Accepted:
+            params = dialog.getDatabaseParams()
+            db = self.connectDatabase(params)
+            self.widget.addDatabase(db)
+            
+    def connectDatabase(self, params):
+        function = TYPE_TO_FUNCTION[params[0]]
+        db = function(*params[1:])
+        print(db, db.tables)
+        return db
 
 
 if __name__ == "__main__":
