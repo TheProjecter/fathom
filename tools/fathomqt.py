@@ -9,7 +9,7 @@ from PyQt4.QtGui import (QDialog, QHBoxLayout, QWidget, QLabel, QStackedWidget,
                          QRadioButton, QLineEdit, QTreeView, QGridLayout,
                          QVBoxLayout, QPushButton, QFileSystemModel, QIcon,
                          QApplication, QTreeView, QMainWindow, QAction,
-                         QTabWidget, QMenu)
+                         QTabWidget, QMenu, QToolBar)
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, TYPE_TO_FUNCTION)
@@ -310,7 +310,16 @@ class FathomModel(QAbstractItemModel):
         
         def name(self):
             return self._table.name
-
+            
+        def createWidget(self):
+            widget = QWidget()
+            widget.setLayout(QVBoxLayout())
+            widget.layout().addWidget(QLabel('<b>' + self._table.name + '</b>'))
+            for column in self._table.columns.values():
+                label = QLabel('%s: %s' % (column.name, column.type))
+                widget.layout().addWidget(label)
+            widget.layout().addStretch()
+            return widget
 
     def __init__(self, parent=None):
         QAbstractItemModel.__init__(self, parent)
@@ -382,8 +391,8 @@ class MainWidget(QWidget):
                      self.openElement)
                      
     def openElement(self, index):
-        name = index.internalPointer().name()
-        self.display.addTab(QLabel(name), name)
+        self.display.addTab(index.internalPointer().createWidget(),
+                            index.internalPointer().name())
         
     def addDatabase(self, db):
         self.model.addDatabase(db)
@@ -406,6 +415,10 @@ class MainWindow(QMainWindow):
         self.connect(action, SIGNAL('triggered()'), self.addConnection)
         menu.addAction(action)
         
+        toolBar = QToolBar()
+        toolBar.addAction(action)
+        self.addToolBar(toolBar)
+        
     def addConnection(self):
         dialog = QConnectionDialog()
         if dialog.exec() == QDialog.Accepted:
@@ -415,9 +428,7 @@ class MainWindow(QMainWindow):
             
     def connectDatabase(self, params):
         function = TYPE_TO_FUNCTION[params[0]]
-        db = function(*params[1:])
-        print(db, db.tables)
-        return db
+        return function(*params[1:])
 
 
 if __name__ == "__main__":
