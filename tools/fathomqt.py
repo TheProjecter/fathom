@@ -106,12 +106,25 @@ class QConnectionDialog(QDialog):
             QWidget.__init__(self, parent)
             
             self.model = QFileSystemModel()
-            self.model.setRootPath(QDir.currentPath())
-            
+            self.model.setRootPath('/')
+
+            # preparing tree view displaying file system
             self.view = QTreeView(parent=self);
             self.view.setModel(self.model)
             for i in range(1, 4):
                 self.view.header().hideSection(i)
+            self.view.header().hide()
+
+            # expanding tree view to show current working directory
+            path = QDir.currentPath().split('/')
+            fullPath = ''
+            for step in path:
+                fullPath += step + '/'
+                index = self.model.index(fullPath)
+                if index.isValid():
+                    self.view.setExpanded(index, True)
+                else:
+                    break
             
             self.setLayout(QVBoxLayout())
             self.layout().addWidget(self.view)
@@ -198,7 +211,7 @@ class QConnectionDialog(QDialog):
             buttonsLayout.addWidget(button)
         
         self.setLayout(mainLayout)
-        self.resize(600, 300)
+        self.resize(600, 400)
         
     def postgresChosen(self):
         self.stackedWidget.setCurrentIndex(0);
