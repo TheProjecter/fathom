@@ -4,12 +4,14 @@ from sys import argv
 from os.path import join
 
 from PyQt4.QtCore import (QDir, SIGNAL, Qt, QAbstractItemModel, QModelIndex,
-                          QVariant, QCoreApplication, QEvent)
+                          QVariant, QCoreApplication, QEvent, QSettings, QPoint,
+                          QSize)
 from PyQt4.QtGui import (QDialog, QHBoxLayout, QWidget, QLabel, QStackedWidget,
                          QRadioButton, QLineEdit, QTreeView, QGridLayout,
                          QVBoxLayout, QPushButton, QFileSystemModel, QIcon,
                          QApplication, QTreeView, QMainWindow, QAction,
-                         QTabWidget, QMenu, QToolBar)
+                         QTabWidget, QMenu, QToolBar, QTableWidget, QLineEdit,
+                         QTableWidgetItem, QGroupBox, QGridLayout)
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, TYPE_TO_FUNCTION)
@@ -312,14 +314,7 @@ class FathomModel(QAbstractItemModel):
             return self._table.name
             
         def createWidget(self):
-            widget = QWidget()
-            widget.setLayout(QVBoxLayout())
-            widget.layout().addWidget(QLabel('<b>' + self._table.name + '</b>'))
-            for column in self._table.columns.values():
-                label = QLabel('%s: %s' % (column.name, column.type))
-                widget.layout().addWidget(label)
-            widget.layout().addStretch()
-            return widget
+            return TableDetailsWidget(self._table)
 
     def __init__(self, parent=None):
         QAbstractItemModel.__init__(self, parent)
@@ -402,6 +397,10 @@ class MainWindow(QMainWindow):
     
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent=parent)
+        settings = QSettings('gruszczy@gmail.com', 'qfathom')
+        geometry = settings.value('main-window/geometry', None)
+        if geometry is not None:
+            self.restoreGeometry(geometry)
         self.setWindowIcon(QIcon('icons/database.png'))
         self.setWindowTitle('QFathom')
         
@@ -419,16 +418,109 @@ class MainWindow(QMainWindow):
         toolBar.addAction(action)
         self.addToolBar(toolBar)
         
+        self.loadConnections()
+        
+    def loadConnections(self):
+        settings = QSettings('gruszczy@gmail.com', 'qfathom')
+        databases = settings.value('databases', [])
+        for params in databases:
+            try:
+                db = self.connectDatabase(params)
+            except FathomError:
+                pass # warn at the end
+            else:
+                self.widget.addDatabase(db)
+        
     def addConnection(self):
         dialog = QConnectionDialog()
         if dialog.exec() == QDialog.Accepted:
             params = dialog.getDatabaseParams()
-            db = self.connectDatabase(params)
-            self.widget.addDatabase(db)
+            try:
+                db = self.connectDatabase(params)
+            except FathomError as e:
+                args = (self, 'Failed to connect to database',
+                        'Failed to connect to database: %e' % str(e))
+                QMessageBox.critical(*args)
+            else:
+                settings = QSettings('gruszczy@gmail.com', 'qfathom')
+                databases = settings.value('databases', [])
+                databases.append(params)
+                settings.setValue('databases', databases)
+                self.widget.addDatabase(db)
             
     def connectDatabase(self, params):
         function = TYPE_TO_FUNCTION[params[0]]
         return function(*params[1:])
+        
+    def closeEvent(self, event):
+        settings = QSettings("gruszczy@gmail.com", "qfathom")
+        settings.setValue("main-window/geometry", self.saveGeometry())
+
+
+class TableDetailsWidget(QWidget):
+    
+    def __init__(self, table, parent=None):
+        QWidget.__init__(self, parent)
+        self._table = table
+        
+        self.setLayout(QVBoxLayout())
+        self.addTitle()
+        self.addColumns()
+        self.addForeignKeys()
+        self.addIndices()
+        self.layout().addStretch()
+
+    def addTitle(self):
+        label = QLabel('<h2>' + self._table.name + '</h2>')
+        self.layout().addWidget(label)
+
+    def addColumns(self):
+        box = QGroupBox(self.tr('Columns'))
+        layout = QGridLayout()
+        layout.addWidget(QLabel(self.tr('<b>Name</b>')), 0, 0)
+        layout.addWidget(QLabel(self.tr('<b>Type</b>')), 0, 1)
+        layout.addWidget(QLabel(self.tr('<b>Not null</b>')), 0, 2)
+        layout.addWidget(QLabel(self.tr('<b>Default</b>')), 0, 3)
+        for index, column in enumerate(self._table.columns.values()):
+            layout.addWidget(QLabel(column.name), index + 1, 0)
+            layout.addWidget(QLabel(column.type), index + 1, 1)
+            layout.addWidget(QLabel(str(column.not_null)), index + 1, 2)
+            layout.addWidget(QLabel(column.default), index + 1, 3)
+        box.setLayout(layout)
+        self.layout().addWidget(box)
+        
+    def addForeignKeys(self):
+        if self._table.foreign_keys:            
+            box = QGroupBox(self.tr('Foreign keys'))
+            layout = QGridLayout()
+            layout.addWidget(QLabel(self.tr('<b>Columns</b>')), 0, 0)
+            layout.addWidget(QLabel(self.tr('<b>Referenced table</b>')), 0, 1)
+            layout.addWidget(QLabel(self.tr('<b>Referenced columns</b>')), 0, 2)
+            for index, fk in enumerate(self._table.foreign_keys):
+                layout.addWidget(QLabel(', '.join(fk.columns)), index + 1, 0)
+                layout.addWidget(QLabel(fk.referenced_table), index + 1, 1)
+                layout.addWidget(QLabel(', '.join(fk.referenced_columns)), 
+                                        index + 1, 2)
+            box.setLayout(layout)
+            self.layout().addWidget(box)
+        else:
+            self.layout().addWidget(QLabel('No foreign keys defined.'))
+            
+    def addIndices(self):
+        if self._table.indices:
+            box = QGroupBox(self.tr('Indices'))
+            layout = QGridLayout()
+            layout.addWidget(QLabel(self.tr('<b>Name</b>')), 0, 0)
+            layout.addWidget(QLabel(self.tr('<b>Columns</b>')), 0, 1)
+            for index, table_index in enumerate(self._table.indices.values()):
+                layout.addWidget(QLabel(table_index.name), index + 1, 0)
+                layout.addWidget(QLabel(', '.join(table_index.columns)), 
+                                 index + 1, 1)
+            box.setLayout(layout)
+            self.layout().addWidget(box)
+        else:
+            self.layout().addWidget(QLabel('No indices defined'))
+        
 
 
 if __name__ == "__main__":
