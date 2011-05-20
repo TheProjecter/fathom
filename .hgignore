@@ -5,6 +5,8 @@ syntax: glob
 *.pyo
 *.pdf
 *.dot
+*.orig
+
 build
 dist
 
