@@ -370,56 +370,41 @@ class MainWidget(QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         self.setLayout(QHBoxLayout())
+        layout = QVBoxLayout()
 
+        # creating button for adding connections
+        button = QPushButton(self.tr('Add connection..'))
+        button.setIcon(QIcon('icons/add_database.png'))
+        
+        # creating view for displaying connections
         view = QTreeView()
+        view.setFixedWidth(250)
         view.header().hide()
         view.setExpandsOnDoubleClick(False)
         self.model = FathomModel()
         view.setModel(self.model)
         
+        # creating widget for displaying inspected objects
         self.display = QClickableTabWidget()
 
-        self.layout().addWidget(view)
+        # merging it all together
+        layout.addWidget(button)
+        layout.addWidget(view)
+        self.layout().addLayout(layout)
         self.layout().addWidget(self.display)
         
+        # connecting to signals
+        self.connect(button, SIGNAL('pressed()'), self.addConnection)
         self.connect(view, SIGNAL('doubleClicked(const QModelIndex &)'),
                      self.openElement)
+        
+        # filling connections view with stored connections
+        self.loadConnections()
                      
     def openElement(self, index):
         self.display.addTab(index.internalPointer().createWidget(),
                             index.internalPointer().name())
-        
-    def addDatabase(self, db):
-        self.model.addDatabase(db)
 
-
-class MainWindow(QMainWindow):
-    
-    def __init__(self, parent=None):
-        QMainWindow.__init__(self, parent=parent)
-        settings = QSettings('gruszczy@gmail.com', 'qfathom')
-        geometry = settings.value('main-window/geometry', None)
-        if geometry is not None:
-            self.restoreGeometry(geometry)
-        self.setWindowIcon(QIcon('icons/database.png'))
-        self.setWindowTitle('QFathom')
-        
-        self.widget = MainWidget()
-        self.setCentralWidget(self.widget)
-        menu = self.menuBar().addMenu(self.tr('Connection'))
-
-        action = QAction(QIcon('icons/add_database.png'), 
-                         self.tr('Add &new..'), self)
-        action.setIconVisibleInMenu(True)
-        self.connect(action, SIGNAL('triggered()'), self.addConnection)
-        menu.addAction(action)
-        
-        toolBar = QToolBar()
-        toolBar.addAction(action)
-        self.addToolBar(toolBar)
-        
-        self.loadConnections()
-        
     def loadConnections(self):
         settings = QSettings('gruszczy@gmail.com', 'qfathom')
         databases = settings.value('databases', [])
@@ -446,12 +431,26 @@ class MainWindow(QMainWindow):
                 databases = settings.value('databases', [])
                 databases.append(params)
                 settings.setValue('databases', databases)
-                self.widget.addDatabase(db)
+                self.model.addDatabase(db)
             
     def connectDatabase(self, params):
         function = TYPE_TO_FUNCTION[params[0]]
         return function(*params[1:])
-        
+
+
+class MainWindow(QMainWindow):
+    
+    def __init__(self, parent=None):
+        QMainWindow.__init__(self, parent=parent)
+        self.setWindowIcon(QIcon('icons/database.png'))
+        self.setWindowTitle('QFathom')
+        self.setCentralWidget(MainWidget())
+
+        settings = QSettings('gruszczy@gmail.com', 'qfathom')
+        geometry = settings.value('main-window/geometry', None)
+        if geometry is not None:
+            self.restoreGeometry(geometry)
+
     def closeEvent(self, event):
         settings = QSettings("gruszczy@gmail.com", "qfathom")
         settings.setValue("main-window/geometry", self.saveGeometry())
@@ -520,7 +519,6 @@ class TableDetailsWidget(QWidget):
             self.layout().addWidget(box)
         else:
             self.layout().addWidget(QLabel('No indices defined'))
-        
 
 
 if __name__ == "__main__":
