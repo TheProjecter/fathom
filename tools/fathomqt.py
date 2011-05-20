@@ -11,7 +11,7 @@ from PyQt4.QtGui import (QDialog, QHBoxLayout, QWidget, QLabel, QStackedWidget,
                          QVBoxLayout, QPushButton, QFileSystemModel, QIcon,
                          QApplication, QTreeView, QMainWindow, QAction,
                          QTabWidget, QMenu, QToolBar, QTableWidget, QLineEdit,
-                         QTableWidgetItem, QGroupBox, QGridLayout)
+                         QTableWidgetItem, QGroupBox, QGridLayout, QCursor)
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, TYPE_TO_FUNCTION)
@@ -233,6 +233,9 @@ class FathomModel(QAbstractItemModel):
             
         def parent(self):
             return self._parent
+        
+        def removable(self):
+            return False
     
     class DatabaseItem(Item):
         
@@ -255,7 +258,10 @@ class FathomModel(QAbstractItemModel):
         def name(self):
             return self.db.name
 
-    
+        def removable(self):
+            return True
+
+
     class TableListItem(Item):
         
         def __init__(self, tables, parent, row):
@@ -323,9 +329,15 @@ class FathomModel(QAbstractItemModel):
     def addDatabase(self, database):
         count = len(self._databases)
         self.beginInsertRows(QModelIndex(), count, count + 1)
-        self._databases.append(self.DatabaseItem(database, 
-                                                 len(self._databases)))
+        self._databases.append(self.DatabaseItem(database, count))
         self.endInsertRows()
+        
+    def removeDatabase(self, database):
+        index = self._databases.index(database)
+        assert index > -1, 'Database to be removed not found!'
+        self.beginRemoveRows(QModelIndex(), index, index + 1)
+        self._databases.pop(index)
+        self.endRemoveRows()
         
     def index(self, row, column, parent):
         if not self.hasIndex(row, column, parent):
@@ -397,13 +409,35 @@ class MainWidget(QWidget):
         self.connect(button, SIGNAL('pressed()'), self.addConnection)
         self.connect(view, SIGNAL('doubleClicked(const QModelIndex &)'),
                      self.openElement)
+        self.connect(view, SIGNAL('pressed(const QModelIndex &)'),
+                     self.editElement)
         
         # filling connections view with stored connections
         self.loadConnections()
                      
-    def openElement(self, index):
+    def openElement(self, index=None):
+        if index is None:
+            index = self.sender().index
         self.display.addTab(index.internalPointer().createWidget(),
                             index.internalPointer().name())
+                            
+    def editElement(self, index):
+        if QApplication.mouseButtons() == Qt.RightButton:
+            menu = QMenu()
+            action = QAction('Open', self)
+            action.index = index
+            self.connect(action, SIGNAL('triggered()'), self.openElement)
+            menu.addAction(action)
+            if index.internalPointer().removable():
+                action = QAction('Remove', self)
+                action.index = index
+                self.connect(action, SIGNAL('triggered()'), self.removeElement)
+                menu.addAction(action)
+            menu.exec(QCursor.pos())
+            
+    def removeElement(self):
+        index = self.sender().index
+        self.model.removeDatabase(index.internalPointer())
 
     def loadConnections(self):
         settings = QSettings('gruszczy@gmail.com', 'qfathom')
@@ -414,7 +448,7 @@ class MainWidget(QWidget):
             except FathomError:
                 pass # warn at the end
             else:
-                self.widget.addDatabase(db)
+                self.model.addDatabase(db)
         
     def addConnection(self):
         dialog = QConnectionDialog()
