@@ -240,6 +240,9 @@ class FathomModel(QAbstractItemModel):
         def __init__(self, parent, row):
             self._parent = parent
             self._row = row
+
+        def childrenCount(self):
+            return 0
             
         def row(self):
             return self._row
@@ -249,6 +252,9 @@ class FathomModel(QAbstractItemModel):
         
         def removable(self):
             return False
+            
+        def isOpenable(self):
+            return True
     
     class DatabaseItem(Item):
         
@@ -261,9 +267,13 @@ class FathomModel(QAbstractItemModel):
                                                       self, 1),
                              FathomModel.TriggerListItem(list(db.triggers.values()), 
                                                          self, 2)]
+            if self.db.supports_stored_procedures():
+                item = FathomModel.ProceduresListItem(list(db.triggers.values()),
+                                                   self, 3)
+                self.children.append(item)
 
         def childrenCount(self):
-            return 3
+            return len(self.children)
             
         def child(self, row):
             return self.children[row]
@@ -293,6 +303,9 @@ class FathomModel(QAbstractItemModel):
         def name(self):
             return _('Tables')
 
+        def isOpenable(self):
+            return False
+            
 
     class ViewListItem(Item):
         
@@ -301,10 +314,13 @@ class FathomModel(QAbstractItemModel):
             self._views = views
 
         def childrenCount(self):
-            return 0
+            return len(self._views)
                         
         def name(self):
             return _('Views')
+
+        def isOpenable(self):
+            return False
             
     
     class TriggerListItem(Item):
@@ -314,10 +330,29 @@ class FathomModel(QAbstractItemModel):
             self._triggers = triggers
             
         def childrenCount(self):
-            return 0
+            return len(self._triggers)
             
         def name(self):
             return _('Triggers')
+
+        def isOpenable(self):
+            return False
+            
+    
+    class ProceduresListItem(Item):
+        
+        def __init__(self, procedures, parent, row):
+            FathomModel.Item.__init__(self, parent, row)
+            self._procedures = procedures
+            
+        def childrenCount(self):
+            return len(self._procedures)
+            
+        def name(self):
+            return _('Procedures')
+            
+        def isOpenable(self):
+            return False
 
 
     class TableItem(Item):
@@ -325,15 +360,26 @@ class FathomModel(QAbstractItemModel):
         def __init__(self, table, parent, row):
             FathomModel.Item.__init__(self, parent, row)
             self._table = table
-            
-        def childrenCount(self):
-            return 0
-        
+                    
         def name(self):
             return self._table.name
             
         def createWidget(self):
             return TableDetailsWidget(self._table)
+            
+    
+    class ViewItem(Item):
+        
+        def __init__(self, view, parent, row):
+            FathomModel.Item.__init__(self, parent, row)
+            self._view = view
+            
+        def name(self):
+            return self._view.name
+            
+        def createWidget(self):
+            return ViewDetailsWidget(self._table)
+            
 
     def __init__(self, parent=None):
         QAbstractItemModel.__init__(self, parent)
