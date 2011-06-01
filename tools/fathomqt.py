@@ -15,7 +15,7 @@ from PyQt4.QtGui import (QDialog, QHBoxLayout, QWidget, QLabel, QStackedWidget,
 
 from fathom import (get_sqlite3_database, get_postgresql_database, 
                     get_mysql_database, TYPE_TO_FUNCTION)
-from fathom.schema import Database
+from fathom.schema import Database, Trigger
 
 _ = lambda string: QCoreApplication.translate('', string)
 
@@ -268,7 +268,7 @@ class FathomModel(QAbstractItemModel):
                              FathomModel.TriggerListItem(list(db.triggers.values()), 
                                                          self, 2)]
             if self.db.supports_stored_procedures():
-                item = FathomModel.ProceduresListItem(list(db.triggers.values()),
+                item = FathomModel.ProceduresListItem(list(db.procedures.values()),
                                                    self, 3)
                 self.children.append(item)
 
@@ -312,9 +312,15 @@ class FathomModel(QAbstractItemModel):
         def __init__(self, views, parent, row):
             FathomModel.Item.__init__(self, parent, row)
             self._views = views
+            Class = FathomModel.ViewItem
+            self.children = [Class(view, self, row)
+                             for row, view in enumerate(self._views)]
 
         def childrenCount(self):
             return len(self._views)
+            
+        def child(self, row):
+            return self.children[row]
                         
         def name(self):
             return _('Views')
@@ -328,9 +334,15 @@ class FathomModel(QAbstractItemModel):
         def __init__(self, triggers, parent, row):
             FathomModel.Item.__init__(self, parent, row)
             self._triggers = triggers
+            Class = FathomModel.TriggerItem
+            self.children = [Class(view, self, row)
+                             for row, view in enumerate(self._triggers)]
             
         def childrenCount(self):
             return len(self._triggers)
+            
+        def child(self, row):
+            return self.children[row]
             
         def name(self):
             return _('Triggers')
@@ -344,9 +356,15 @@ class FathomModel(QAbstractItemModel):
         def __init__(self, procedures, parent, row):
             FathomModel.Item.__init__(self, parent, row)
             self._procedures = procedures
+            Class = FathomModel.ProcedureItem
+            self.children = [Class(view, self, row)
+                             for row, view in enumerate(self._procedures)]
             
         def childrenCount(self):
             return len(self._procedures)
+            
+        def child(self, row):
+            return self.children[row]
             
         def name(self):
             return _('Procedures')
@@ -378,8 +396,34 @@ class FathomModel(QAbstractItemModel):
             return self._view.name
             
         def createWidget(self):
-            return ViewDetailsWidget(self._table)
+            return ViewDetailsWidget(self._view)
             
+    
+    class TriggerItem(Item):
+        
+        def __init__(self, trigger, parent, row):
+            FathomModel.Item.__init__(self, parent, row)
+            self._trigger = trigger
+            
+        def name(self):
+            return self._trigger.name
+            
+        def createWidget(self):
+            return TriggerDetailsWidget(self._trigger)
+
+
+    class ProcedureItem(Item):
+        
+        def __init__(self, procedure, parent, row):
+            FathomModel.Item.__init__(self, parent, row)
+            self._procedure = procedure
+            
+        def name(self):
+            return self._procedure.name
+            
+        def createWidget(self):
+            return ProcedureDetailsWidget(self._procedure)            
+
 
     def __init__(self, parent=None):
         QAbstractItemModel.__init__(self, parent)
@@ -549,22 +593,25 @@ class MainWindow(QMainWindow):
         settings.setValue("main-window/geometry", self.saveGeometry())
 
 
-class TableDetailsWidget(QWidget):
+class DetailsWidget(QWidget):
+    
+    def addTitle(self, name):
+        label = QLabel('<h2>' + name + '</h2>')
+        self.layout().addWidget(label)
+        
+
+class TableDetailsWidget(DetailsWidget):
     
     def __init__(self, table, parent=None):
         QWidget.__init__(self, parent)
         self._table = table
         
         self.setLayout(QVBoxLayout())
-        self.addTitle()
+        self.addTitle(table.name)
         self.addColumns()
         self.addForeignKeys()
         self.addIndices()
         self.layout().addStretch()
-
-    def addTitle(self):
-        label = QLabel('<h2>' + self._table.name + '</h2>')
-        self.layout().addWidget(label)
 
     def addColumns(self):
         box = QGroupBox(self.tr('Columns'))
@@ -582,7 +629,7 @@ class TableDetailsWidget(QWidget):
         self.layout().addWidget(box)
         
     def addForeignKeys(self):
-        if self._table.foreign_keys:            
+        if self._table.foreign_keys:
             box = QGroupBox(self.tr('Foreign keys'))
             layout = QGridLayout()
             layout.addWidget(QLabel(self.tr('<b>Columns</b>')), 0, 0)
@@ -612,6 +659,84 @@ class TableDetailsWidget(QWidget):
             self.layout().addWidget(box)
         else:
             self.layout().addWidget(QLabel('No indices defined'))
+            
+
+class ViewDetailsWidget(DetailsWidget):
+    
+    def __init__(self, view, parent=None):
+        QWidget.__init__(self, parent)
+        self._view = view
+        
+        self.setLayout(QVBoxLayout())
+        self.addTitle(view.name)
+        self.addColumns()
+        self.layout().addStretch()
+
+    def addColumns(self):
+        box = QGroupBox(self.tr('Columns'))
+        layout = QGridLayout()
+        layout.addWidget(QLabel(self.tr('<b>Name</b>')), 0, 0)
+        layout.addWidget(QLabel(self.tr('<b>Type</b>')), 0, 1)
+        layout.addWidget(QLabel(self.tr('<b>Not null</b>')), 0, 2)
+        layout.addWidget(QLabel(self.tr('<b>Default</b>')), 0, 3)
+        for index, column in enumerate(self._view.columns.values()):
+            layout.addWidget(QLabel(column.name), index + 1, 0)
+            layout.addWidget(QLabel(column.type), index + 1, 1)
+            layout.addWidget(QLabel(str(column.not_null)), index + 1, 2)
+            layout.addWidget(QLabel(column.default), index + 1, 3)
+        box.setLayout(layout)
+        self.layout().addWidget(box)
+        
+
+class TriggerDetailsWidget(DetailsWidget):
+    
+    WHEN_NAMES = {Trigger.BEFORE: 'BEFORE', Trigger.AFTER: 'AFTER', 
+                  Trigger.INSTEAD: 'INSTEAD'}
+    EVENT_NAMES = {Trigger.UPDATE: 'UPDATE', Trigger.BEFORE: 'BEFORE',
+                   Trigger.DELETE: 'DELETE'}
+    
+    def __init__(self, trigger, parent=None):
+        QWidget.__init__(self, parent)
+        self._trigger = trigger
+        
+        self.setLayout(QVBoxLayout())
+        self.addTitle(trigger.name)
+        self.addInformation()
+        self.layout().addStretch()
+        
+    def addInformation(self):
+        layout = QGridLayout()
+        layout.addWidget(QLabel(self.tr('<b>Table:</b>')), 0, 0)
+        layout.addWidget(QLabel(self._trigger.table), 0, 1)
+        layout.addWidget(QLabel(self.tr('<b>When:</b>'),), 1, 0)
+        layout.addWidget(QLabel(self.WHEN_NAMES[self._trigger.when] + ' ' +
+                                self.EVENT_NAMES[self._trigger.event]), 1, 1)
+        self.layout().addLayout(layout)
+        
+
+class ProcedureDetailsWidget(DetailsWidget):
+    
+    def __init__(self, procedure, parent=None):
+        QWidget.__init__(self, parent)
+        self._procedure = procedure
+        
+        self.setLayout(QVBoxLayout())
+        self.addTitle(procedure.name)
+        self.addReturns()
+        self.addArguments()
+        self.layout().addStretch()
+    
+    def addReturns(self):
+        label = QLabel(self.tr('<b>Returns:</b> ') + self._procedure.returns)
+        self.layout().addWidget(label)
+        
+    def addArguments(self):
+        if self._procedure.arguments:
+            for argument in self._procedure.arguments:
+                pass
+        else:
+            label = QLabel(self.tr("Procedure doesn't accept any arguments."))
+            self.layout().addWidget(label)
 
 
 if __name__ == "__main__":
