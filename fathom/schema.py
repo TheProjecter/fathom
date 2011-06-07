@@ -16,12 +16,15 @@ class Database(Named):
         # get it too
         super(Database, self).__init__(name, **kwargs)
         self.inspector = inspector
-
+        self.refresh()
+        
+    def refresh(self):
         self._tables = None
         self._views = None
         self._procedures = None
         self._triggers = None
-        
+        self._indices = None
+                
     def _get_case_sensitivity(self):
         return self.inspector.CASE_SENSITIVITY
     case_sensitivity = property(_get_case_sensitivity)
@@ -48,7 +51,6 @@ class Database(Named):
         assert self.inspector is None, "Cannot set tables on already inspected database"
         self._tables = tables
 	 
-    
     tables = property(_get_tables, _set_tables)
     
     _refresh_views = get_refresh_method('views')
@@ -68,6 +70,15 @@ class Database(Named):
         return self._procedures
     
     procedures = property(_get_procedures)
+    
+    _refresh_indices = get_refresh_method('indices')
+    
+    def _get_indices(self):
+        if self._indices is None:
+            self._refresh_indices()
+        return self._indices
+        
+    indices = property(_get_indices)
     
     _refresh_triggers = get_refresh_method('triggers')
     
@@ -105,21 +116,22 @@ class WithColumns(object):
 
 class Table(Named, WithColumns):
     
-    def __init__(self, name, inspector=None, **kwargs):
-        super(Table, self).__init__(name, **kwargs)
+    def __init__(self, name, database=None, inspector=None):
+        super(Table, self).__init__(name)
         self.inspector = inspector
-        self._indices = None
+        # self._indices = None
         self._foreign_keys = None
+        self.database = database
 
-    def _get_indices(self):
-        if self._indices is None:
-            self.inspector.build_indices(self)
-        return self._indices
+    #def _get_indices(self):
+    #    if self._indices is None:
+    #        self.inspector.build_indices(self)
+    #    return self._indices
     
-    def _set_indices(self, indices):
-        self._indices = indices
+    #def _set_indices(self, indices):
+    #    self._indices = indices
     
-    indices = property(_get_indices, _set_indices)
+    #indices = property(_get_indices, _set_indices)
     
     def _get_foreign_keys(self):
         if self._foreign_keys is None:
@@ -130,6 +142,12 @@ class Table(Named, WithColumns):
         self._foreign_keys = foreign_keys
         
     foreign_keys = property(_get_foreign_keys, _set_foreign_keys)
+    
+    def drop(self):
+        if self.inspector:
+            self.inspector.drop_table(self)
+        if self.database:
+            del self.database.tables[self.name]
         
 
 class View(Named, WithColumns):

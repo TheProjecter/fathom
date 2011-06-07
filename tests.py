@@ -258,8 +258,6 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self.assertEqual(table.columns[column].type, 
                          self.case('varchar(800)'))
         self.assertEqual(table.columns[column].not_null, False)
-        self.assertEqual(set(table.indices.keys()), 
-                         set([self.case('one_column_index')]))
         
     def test_table_one_unique_column(self):
         # TODO: use assertColumns
@@ -268,12 +266,6 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self.assertEqual(table.columns[self.case('col')].type, 
                          self.case(self.DEFAULT_INTEGER_TYPE_NAME))
         self.assertEqual(table.columns[self.case('col')].not_null, False)
-        if self.HAS_USABLE_INDEX_NAMES:
-            index_names = [self.index_name('one_unique_column', 'col')]
-            self.assertEqual(set(table.indices.keys()), set(index_names))
-            self.assertIndex(table, index_names[0], ('col',))
-        else:
-            self.assertEqual(len(table.indices.keys()), 1)
         
     def test_table_column_with_default(self):
         # TODO: user assertColumns
@@ -289,30 +281,12 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         values = (('col1', self.DEFAULT_INTEGER_TYPE_NAME, False), 
                   ('col2', 'varchar(80)', False))
         self.assertColumns(table, values)
-        if self.HAS_USABLE_INDEX_NAMES:
-            index_names = [self.index_name('two_columns_unique', 
-                                                'col1', 'col2')]
-            self.assertIndices(table, index_names)
-            self.assertIndex(table, index_names[0], ('col1', 'col2'))
-        else:
-            self.assertEqual(len(table.indices.keys()), 1)
 
     def test_table_primary_key_only(self):
         table = self.db.tables[self.case('primary_key_only')]
         values = (('id', self.DEFAULT_INTEGER_TYPE_NAME, 
                    self.PRIMARY_KEY_IS_NOT_NULL),)
         self.assertColumns(table, values)
-        if self.HAS_USABLE_INDEX_NAMES:
-            if self.CREATES_INDEX_FOR_PRIMARY_KEY:
-                index_names = [self.pkey_index_name('primary_key_only', 'id')]
-            else:
-                index_names = []
-            self.assertEqual(set(table.indices.keys()), set(index_names))
-            if self.CREATES_INDEX_FOR_PRIMARY_KEY:
-                self.assertIndex(table, index_names[0], ('id',))
-        else:
-            if self.CREATES_INDEX_FOR_PRIMARY_KEY:
-                self.assertEqual(len(table.indices), 1)
         
     def test_table_two_double_uniques(self):
         table = self.db.tables[self.case('two_double_uniques')]
@@ -320,14 +294,6 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
                   ('y', self.DEFAULT_INTEGER_TYPE_NAME, False),
                   ('z', self.DEFAULT_INTEGER_TYPE_NAME, False))
         self.assertColumns(table, values)
-        if self.HAS_USABLE_INDEX_NAMES:
-            index_names = [self.index_name('two_double_uniques', 'x', 'y', 
-                                           count=1),
-                           self.index_name('two_double_uniques', 'x', 'z', 
-                                           count=2)]
-            self.assertEqual(set(table.indices.keys()), set(index_names))
-        else:
-            self.assertEqual(len(table.indices.keys()), 2)
     
     def test_table_reference_one_unique_column(self):
         table = self.db.tables[self.case('reference_one_unique_column')]
@@ -356,6 +322,14 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
             column = table.columns[self.case('some_column')]
             self.assertEqual(column.name, self.case('some_column'))
         self.assertEqual(column.type, self.DEFAULT_INTEGER_TYPE_NAME)
+        
+    def test_drop(self):
+        name = self.case('two_columns_unique')
+        table = self.db.tables[name]
+        table.drop()
+        self.assertTrue(name not in self.db.tables)
+        self.db.refresh()
+        self.assertTrue(name not in self.db.tables)
             
     # view tests
 
@@ -381,7 +355,22 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         self.assertEqual(trigger.table, self.case('one_column'))
         self.assertEqual(trigger.when, Trigger.BEFORE)
         self.assertEqual(trigger.event, Trigger.INSERT)
-        
+
+    # index tests
+    
+    def test_index_names(self):
+        indices = {self.case('one_column_index'), 
+                   self.index_name('two_double_uniques', 'x', 'y', count=1),
+                   self.index_name('two_double_uniques', 'x', 'z', count=2),
+                   self.index_name('one_unique_column', 'col'),
+                   self.index_name('two_columns_unique', 'col1', 'col2')}
+        if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+            indices.add(self.pkey_index_name('primary_key_only', 'id'))
+        if self.HAS_USABLE_INDEX_NAMES:
+            self.assertEqual(set(self.db.indices.keys()), indices)
+        else:
+            self.assertEqual(len(self.db.indices.keys()), len(indices))
+
     # other tests
 
     def test_supports_procedures(self):
@@ -424,15 +413,19 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         
     @classmethod    
     def _drop_operation(Class, type, names):
-        def function(Class, cursor):
-            for name in names:
-                try:
-                    sql = 'DROP %s "%s"' % (type, name)
-                    sql = Class.substitute_quote_char(sql)
-                    cursor.execute(sql);
-                except Class.DATABASE_ERRORS as e:
-                    pass # maybe it was not created, we need to try drop other
-        Class._run_using_cursor(function)
+        conn = Class._get_connection()
+        cursor = conn.cursor()
+        for name in names:
+            sql = Class.substitute_quote_char('DROP %s "%s"' % (type, name))
+            try:
+                cursor.execute(sql);
+                conn.commit()
+            except Class.DATABASE_ERRORS as e:
+                # maybe it was dropped on not created, we need to try drop other
+                conn = Class._get_connection()
+                cursor = conn.cursor()
+        cursor.close()
+        conn.close()
 
     def _add_triggers(self):
         self._add_operation(self.TRIGGERS.values())
@@ -446,6 +439,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         
     def case(self, string):
         return string.lower()
+
 
 class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
     
@@ -952,9 +946,6 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
                   ('codename', 'varchar(100)', True))
         self.assertColumns(table, values)
         
-        self.assertEqual(set(table.indices.keys()), 
-                         set([self.index_name('auth_permission')]))
-
     # sqlite internal methods required for testing
 
     def index_name(self, table_name, *columns, count=1):

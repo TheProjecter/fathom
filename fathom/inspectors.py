@@ -95,6 +95,13 @@ class DatabaseInspector(metaclass=ABCMeta):
         connection.close()
         return rows
         
+    def drop_table(self, table):
+        connection = self._api.connect(*self._args, **self._kwargs)
+        cursor = connection.cursor()
+        cursor.execute('DROP TABLE %s' % table.name)
+        connection.commit()
+        connection.close()
+        
     def case(self, string):
         if self.CASE_SENSITIVITY != constants.CASE_INSENSITIVE:
             return string
@@ -421,6 +428,11 @@ FROM information_schema.columns
 WHERE table_name = '%s'
 """
 
+    _INDEX_NAMES_SQL = """
+SELECT index_name 
+FROM information_schema.statistics
+"""
+
     _TABLE_INDEX_NAMES_SQL = """
 SELECT index_name 
 FROM information_schema.statistics
@@ -567,6 +579,11 @@ SELECT column_name, data_type, data_length, data_default,
        upper(nullable)
 FROM all_tab_columns
 WHERE table_name = '%s'
+"""
+   
+    _INDEX_NAMES_SQL = """
+SELECT index_name
+FROM user_indexes
 """
     
     _TABLE_INDEX_NAMES_SQL = """
