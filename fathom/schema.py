@@ -119,19 +119,8 @@ class Table(Named, WithColumns):
     def __init__(self, name, database=None, inspector=None):
         super(Table, self).__init__(name)
         self.inspector = inspector
-        # self._indices = None
         self._foreign_keys = None
         self.database = database
-
-    #def _get_indices(self):
-    #    if self._indices is None:
-    #        self.inspector.build_indices(self)
-    #    return self._indices
-    
-    #def _set_indices(self, indices):
-    #    self._indices = indices
-    
-    #indices = property(_get_indices, _set_indices)
     
     def _get_foreign_keys(self):
         if self._foreign_keys is None:
@@ -159,10 +148,13 @@ class View(Named, WithColumns):
 
 class Index(Named):
     
-    def __init__(self, name, inspector=None, **kwargs):
+    def __init__(self, name, table, base_name=None, inspector=None, **kwargs):
         super(Index, self).__init__(name, **kwargs)
+        self.table = table
         self._columns = None
+        self.is_unique = False
         self.inspector = inspector
+        self.base_name = base_name if base_name is not None else name
         
     def _get_columns(self):
         if self._columns is None:

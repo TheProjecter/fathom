@@ -35,8 +35,11 @@ class DatabaseInspector(metaclass=ABCMeta):
                                 
     def get_indices(self):
         '''Return names of all indices in the database.'''
-        return dict((row[0], Index(row[0])) 
-                    for row in self._select(self._INDEX_NAMES_SQL))
+        result = {}
+        for row in self._select(self._INDEX_NAMES_SQL):
+            name = '%s: %s' % (row[1], row[0])
+            result[name] = Index(name, row[1], base_name=row[0], inspector=self)
+        return result
         
     def get_procedures(self): 
         '''Return names of all stored procedures in the database.'''
@@ -51,7 +54,7 @@ class DatabaseInspector(metaclass=ABCMeta):
                     for row in self._select(self._PROCEDURE_NAMES_SQL))
 
     def get_index_columns(self, index):
-        sql = self._INDEX_COLUMNS_SQL % index.name
+        sql = self._INDEX_COLUMNS_SQL % index.base_name
         return tuple(row[0] for row in self._select(sql))        
 
     def build_columns(self, schema_object):
@@ -62,11 +65,6 @@ class DatabaseInspector(metaclass=ABCMeta):
             name = (row[0] if case_sensitve else row[0].lower())
             columns[name] = self.prepare_column(row)
         schema_object.columns = columns
-
-    def build_indices(self, table):
-        sql = self._TABLE_INDEX_NAMES_SQL % table.name
-        table.indices = dict((row[0], Index(row[0], inspector=self)) 
-                             for row in self._select(sql))
                              
     def prepare_default(self, data_type, value):
         if data_type in self.INTEGER_TYPES:
@@ -88,7 +86,10 @@ class DatabaseInspector(metaclass=ABCMeta):
         return True
                     
     def _select(self, sql):
-        connection = self._api.connect(*self._args, **self._kwargs)
+        try:
+            connection = self._api.connect(*self._args, **self._kwargs)
+        except: # TODO: properly catch exceptions here
+            raise FathomError('Failed to connect!')
         cursor = connection.cursor()
         cursor.execute(sql)
         rows = list(cursor)
@@ -126,12 +127,20 @@ class SqliteInspector(DatabaseInspector):
 SELECT name
 FROM sqlite_master
 WHERE type = 'trigger'"""
+
+    _INDEX_NAMES_SQL = """
+SELECT name, tbl_name
+FROM sqlite_master
+WHERE type = 'index'
+"""
     
-    _COLUMN_NAMES_SQL = """pragma table_info(%s)"""
-    
-    _TABLE_INDEX_NAMES_SQL = """pragma index_list(%s)"""
-    
-    _INDEX_COLUMNS_SQL = """pragma index_info(%s)"""
+    _COLUMN_NAMES_SQL = """
+pragma table_info(%s)
+"""
+
+    _INDEX_COLUMNS_SQL = """
+pragma index_info(%s)
+"""
     
     _FOREIGN_KEYS_SQL = """pragma foreign_key_list(%s)"""
     
@@ -155,17 +164,17 @@ WHERE type='trigger' AND name = '%s'"""
 
     def get_procedures(self):
         return {}
+
+    def get_indices(self):
+        '''Return names of all indices in the database.'''
+        return {'%s' % row[0]: Index(row[0], row[1], inspector=self) 
+                for row in self._select(self._INDEX_NAMES_SQL)}
         
     def build_columns(self, schema_object):
         sql = self._COLUMN_NAMES_SQL % schema_object.name
         schema_object.columns = dict((row[1].lower(), self.prepare_column(row)) 
                                      for row in self._select(sql))
-                                     
-    def build_indices(self, table):
-        sql = self._TABLE_INDEX_NAMES_SQL % table.name
-        table.indices = dict((row[1], Index(row[1], inspector=self))
-                             for row in self._select(sql))
-                             
+
     def build_trigger(self, trigger):
         sql = self._TRIGGER_SQL % trigger.name
         source_sql = self._select(sql)[0][0]
@@ -247,15 +256,9 @@ FROM information_schema.columns
 WHERE table_name = '%s'"""
                            
     _INDEX_NAMES_SQL = """
-SELECT indexname
+SELECT indexname, tablename
 FROM pg_indexes
 WHERE schemaname = 'public'"""
-
-    _TABLE_INDEX_NAMES_SQL = """
-SELECT indexname 
-FROM pg_indexes 
-WHERE schemaname='public' AND tablename='%s'
-"""
 
     _PROCEDURE_NAMES_SQL = """
 SELECT proname, proargtypes, prosrc, prorettype
@@ -429,14 +432,8 @@ WHERE table_name = '%s'
 """
 
     _INDEX_NAMES_SQL = """
-SELECT index_name 
+SELECT index_name, table_name
 FROM information_schema.statistics
-"""
-
-    _TABLE_INDEX_NAMES_SQL = """
-SELECT index_name 
-FROM information_schema.statistics
-WHERE table_name = '%s'
 """
 
     _INDEX_COLUMNS_SQL = """
@@ -582,14 +579,8 @@ WHERE table_name = '%s'
 """
    
     _INDEX_NAMES_SQL = """
-SELECT index_name
+SELECT index_name, table_name
 FROM user_indexes
-"""
-    
-    _TABLE_INDEX_NAMES_SQL = """
-SELECT index_name
-FROM user_indexes
-WHERE table_name = upper('%s')
 """
 
     _TRIGGER_INFO_SQL = """

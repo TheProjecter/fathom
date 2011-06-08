@@ -118,6 +118,7 @@ class AbstractDatabaseTestCase(metaclass=ABCMeta):
     DEFAULT_INTEGER_TYPE_NAME = 'integer'
     PRIMARY_KEY_IS_NOT_NULL = True
     CREATES_INDEX_FOR_PRIMARY_KEY = True
+    CREATES_INDEX_FOR_REFERENCES = False
     HAS_USABLE_INDEX_NAMES = True
     USES_CASE_SENSITIVE_IDENTIFIERS = True
     case = lambda Class, string: string.lower()
@@ -359,7 +360,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     # index tests
     
     def test_index_names(self):
-        indices = {self.case('one_column_index'), 
+        indices = {self.case('one_column: one_column_index'), 
                    self.index_name('two_double_uniques', 'x', 'y', count=1),
                    self.index_name('two_double_uniques', 'x', 'z', count=2),
                    self.index_name('one_unique_column', 'col'),
@@ -676,9 +677,9 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
         
     def index_name(self, table_name, *columns, count=1):
         if len(columns):
-            name = '%s_%s_key' % (table_name, columns[0])
+            name = '%s: %s_%s_key' % (table_name, table_name, columns[0])
         else:
-            name = '%s_column_key' % table_name
+            name = '%s: %s_column_key' % (table_name, table_name)
         if count > 1:
             # postgres has really strange way of indexing index names; first
             # has no suffix, the following add count suffix beginning with 1
@@ -686,7 +687,7 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
         return name
             
     def pkey_index_name(self, table_name, *columns):
-        return '%s_pkey' % table_name
+        return '%s: %s_pkey' % (table_name, table_name)
         
     @classmethod
     def _get_connection(Class):
@@ -716,6 +717,7 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     DATABASE_ERRORS = mysql_errors
 
     DEFAULT_INTEGER_TYPE_NAME = 'int'
+    CREATES_INDEX_FOR_REFERENCES = True
 
     TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
     TABLES['one_unique_column'] = '''
@@ -777,6 +779,20 @@ CREATE PROCEDURE get_accessing_procedures_2()
     def test_simple_proc(self, procedure):
         self.assertEqual(procedure.sql, 'BEGIN\nEND')
 
+    def test_index_names(self):
+        indices = {self.case('one_column: one_column_index'), 
+                   self.index_name('two_double_uniques', 'x', 'y', count=1),
+                   self.index_name('two_double_uniques', 'x', 'z', count=2),
+                   self.index_name('one_unique_column', 'col'),
+                   self.index_name('two_columns_unique', 'col1', 'col2')}
+        if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+            indices.add(self.pkey_index_name('primary_key_only', 'id'))
+        indices.add(self.ref_index_name('reference_one_unique_column',
+                                        "ref_one_column"))
+        indices.add(self.ref_index_name('reference_two_tables', 'ref1'))
+        indices.add(self.ref_index_name('reference_two_tables', 'ref2'))
+        self.assertEqual(set(self.db.indices.keys()), indices)
+
     # find_accessing_procedures tests
     
     def test_find_accessing_procedures(self):
@@ -788,13 +804,16 @@ CREATE PROCEDURE get_accessing_procedures_2()
 
     def index_name(self, table_name, *columns, count=1):
         if count == 1:
-            return '%s' % columns[0]
+            return '%s: %s' % (table_name, columns[0])
         else:
-            return '%s_%d' % (columns[0], count)
+            return '%s: %s_%d' % (table_name, columns[0], count)
 
     def pkey_index_name(self, table_name, *columns):
-        return 'PRIMARY'
-
+        return '%s: PRIMARY' % table_name
+        
+    def ref_index_name(self, table_name, column, *columns):
+        return '%s: %s' % (table_name, column)
+        
     @classmethod
     def _get_connection(Class):
         return mysql_module.connect(user=Class.USER, db=Class.DBNAME)
@@ -872,10 +891,13 @@ CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
         pass
 
     def index_name(self, table_name, *columns, count=1):
-        return ''
+        # these index names are not generated this way, but we need to keep 
+        # those names somehow
+        return 'index_%s_' % table_name + '_'.join(columns)
         
     def pkey_index_name(self, table_name, *columns):
-        return ''
+        return self.index_name(table_name, *columns)
+        
 
     def case(self, string):
         return string.upper()
@@ -945,6 +967,21 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
                   ('content_type_id', 'integer', True),
                   ('codename', 'varchar(100)', True))
         self.assertColumns(table, values)
+
+    def test_index_names(self):
+        indices = {self.case('one_column_index'), 
+                   self.index_name('two_double_uniques', 'x', 'y', count=1),
+                   self.index_name('two_double_uniques', 'x', 'z', count=2),
+                   self.index_name('one_unique_column', 'col'),
+                   self.index_name('two_columns_unique', 'col1', 'col2'),
+                   self.index_name('auth_permission', 'content_type_id', 
+                                   'codename')}
+        if self.CREATES_INDEX_FOR_PRIMARY_KEY:
+            indices.add(self.pkey_index_name('primary_key_only', 'id'))
+        if self.HAS_USABLE_INDEX_NAMES:
+            self.assertEqual(set(self.db.indices.keys()), indices)
+        else:
+            self.assertEqual(len(self.db.indices.keys()), len(indices))
         
     # sqlite internal methods required for testing
 
