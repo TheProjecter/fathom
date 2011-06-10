@@ -24,6 +24,10 @@ class Database(Named):
         self._procedures = None
         self._triggers = None
         self._indices = None
+        
+    def _get_version(self):
+        return self.inspector.version
+    version = property(_get_version)
                 
     def _get_case_sensitivity(self):
         return self.inspector.CASE_SENSITIVITY
