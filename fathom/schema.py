@@ -17,7 +17,7 @@ class Database(Named):
         super(Database, self).__init__(name, **kwargs)
         self.inspector = inspector
         self.refresh()
-        
+                        
     def refresh(self):
         self._tables = None
         self._views = None
