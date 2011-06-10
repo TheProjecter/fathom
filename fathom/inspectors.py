@@ -278,7 +278,7 @@ WHERE pg_language.lanname = 'plpgsql'
 """
 
     _PROCEDURE_ARGUMENTS_SQL = """
-SELECT proargnames, proargtypes
+SELECT proargnames, proargtypes, proargmodes
 FROM pg_proc JOIN pg_language ON pg_proc.prolang = pg_language.oid
 WHERE pg_language.lanname = 'plpgsql' AND proname = '%s' AND proargtypes='%s'
 """
