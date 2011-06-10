@@ -85,10 +85,10 @@ class DatabaseInspector(metaclass=ABCMeta):
     def _select(self, sql):
         try:
             connection = self._api.connect(*self._args, **self._kwargs)
-        except: # TODO: properly catch exceptions here
-            raise FathomError('Failed to connect!')
-        cursor = connection.cursor()
-        cursor.execute(sql)
+            cursor = connection.cursor()
+            cursor.execute(sql)
+        except Exception as e: # TODO: properly catch exceptions here
+            raise FathomError(str(e))
         rows = list(cursor)
         connection.close()
         return rows
