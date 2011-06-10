@@ -121,6 +121,7 @@ class AbstractDatabaseTestCase(metaclass=ABCMeta):
     CREATES_INDEX_FOR_REFERENCES = False
     HAS_USABLE_INDEX_NAMES = True
     USES_CASE_SENSITIVE_IDENTIFIERS = True
+    USES_PROCEDURES = True
     case = lambda Class, string: string.lower()
     
     TABLES = OrderedDict((
@@ -162,11 +163,13 @@ CREATE TABLE reference_two_tables (
 CREATE TABLE "SoMe_TaBlE" (
     col integer
 )'''),
+    ('some_table', 
+'''CREATE TABLE some_table (col int)'''),
     ('case_sensitive_column', '''
 CREATE TABLE case_sensitive_column (
     "SoMe_CoLuMn" InTeGeR
-)''')
-))
+)'''))
+)
     
     VIEWS = {
         'one_column_view': '''
@@ -187,22 +190,28 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END''',
 CREATE TRIGGER after_delete_trigger AFTER DELETE ON one_column
 FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     }
+    
+    PROCEDURES = {}
 
     # TODO: this should be turned into setUpClass, when Ubuntu ships python 3.2
     def setUp(self):
         try:
             self._add_operation(self.TABLES.values())
             self._add_operation(self.VIEWS.values())
+            if self.USES_PROCEDURES:
+                self._add_operation(self.PROCEDURES.values())
             self._add_operation(self.INDICES.values())
             self._add_triggers()
         except self.DATABASE_ERRORS as e:
             self.tearDown()
             raise
         
-    # TODO: this should be turned into tearDownClass, when Ubuntu ships python 3.2
+    # TODO: this should be turned into tearDownClass, when Ubuntu ships python 3.2                
     def tearDown(self):
         self._drop_triggers()
         self._drop_operation('INDEX', self.INDICES)
+        if self.USES_PROCEDURES:
+            self._drop_procedures();
         self._drop_operation('VIEW', self.VIEWS)
         self._drop_operation('TABLE', reversed(tuple(self.TABLES.keys())))
 
@@ -371,6 +380,25 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
             self.assertEqual(set(self.db.indices.keys()), indices)
         else:
             self.assertEqual(len(self.db.indices.keys()), len(indices))
+            
+    def test_index_one_unique_column(self):
+        if not self.HAS_USABLE_INDEX_NAMES:
+            return
+        index = self.db.indices[self.index_name('one_unique_column', 'col')]
+        self.assertTrue(index.is_unique)
+        
+    def test_index_one_column_index(self):
+        index = self.db.indices[self.case('one_column: one_column_index')]
+        self.assertFalse(index.is_unique)
+        
+    # procedure tests
+    
+    def test_procedure_names(self):
+        self.assertEqual(set([key for key in self.db.procedures.keys()]), 
+                         set(self.PROCEDURES.keys()))
+        self.assertEqual(set([procedure.name 
+                              for procedure in self.db.procedures.values()]), 
+                         set(self.PROCEDURES.keys()))        
 
     # other tests
 
@@ -427,59 +455,6 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
                 cursor = conn.cursor()
         cursor.close()
         conn.close()
-
-    def _add_triggers(self):
-        self._add_operation(self.TRIGGERS.values())
-        
-    def _drop_triggers(self):
-        self._drop_operation('TRIGGER', self.TRIGGERS)
-        
-    @staticmethod
-    def substitute_quote_char(string):
-        return string
-        
-    def case(self, string):
-        return string.lower()
-
-
-class DatabaseWithProceduresTestCase(AbstractDatabaseTestCase):
-    
-    PROCEDURES = {}
-    
-    TABLES = AbstractDatabaseTestCase.TABLES.copy()
-    TABLES['some_table'] = '''
-CREATE TABLE some_table (
-    col integer
-)'''
-
-    def setUp(self):
-        try:
-            self._add_operation(self.TABLES.values())
-            self._add_operation(self.VIEWS.values())
-            self._add_operation(self.PROCEDURES.values())
-            self._add_operation(self.INDICES.values())
-            self._add_triggers()
-        except self.DATABASE_ERRORS as e:
-            self.tearDown()
-            raise
-            
-    def tearDown(self):
-        self._drop_triggers()
-        self._drop_operation('INDEX', self.INDICES)
-        self._drop_procedures();
-        self._drop_operation('VIEW', self.VIEWS)
-        self._drop_operation('TABLE', reversed(tuple(self.TABLES.keys())))
-        
-    # tests
-    
-    def test_procedure_names(self):
-        self.assertEqual(set([key for key in self.db.procedures.keys()]), 
-                         set(self.PROCEDURES.keys()))
-        self.assertEqual(set([procedure.name 
-                              for procedure in self.db.procedures.values()]), 
-                         set(self.PROCEDURES.keys()))
-
-    # protected:
         
     @classmethod
     def _drop_procedures(Class):
@@ -494,20 +469,34 @@ CREATE TABLE some_table (
                     except Class.DATABASE_ERRORS as e:
                         # maybe it was not created, we need to try drop other
                         pass 
-        Class._run_using_cursor(function)        
-            
+        Class._run_using_cursor(function)              
+
+    def _add_triggers(self):
+        self._add_operation(self.TRIGGERS.values())
+        
+    def _drop_triggers(self):
+        self._drop_operation('TRIGGER', self.TRIGGERS)
+        
+    @staticmethod
+    def substitute_quote_char(string):
+        return string
+
+    @classmethod
+    def case(Class, string):
+        return string.lower()
+
 
 @skipUnless(TEST_POSTGRES, 'Failed to import psycopg2 module.')
-class PostgresTestCase(DatabaseWithProceduresTestCase, TestCase):
+class PostgresTestCase(AbstractDatabaseTestCase, TestCase):
     
     DBNAME = 'fathom'
     USER = 'fathom'
     DATABASE_ERRORS = postgres_errors
     
-    TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
+    TABLES = AbstractDatabaseTestCase.TABLES.copy()
     TABLES['empty'] = '''CREATE TABLE empty()'''
 
-    PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
+    PROCEDURES = AbstractDatabaseTestCase.PROCEDURES.copy()
     PROCEDURES['fib(int4)'] = '''
 CREATE OR REPLACE FUNCTION fib (fib_for integer) RETURNS integer AS $$
     BEGIN
@@ -610,7 +599,7 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
     }
 
     def setUp(self):
-        DatabaseWithProceduresTestCase.setUp(self)
+        AbstractDatabaseTestCase.setUp(self)
         args = self.DBNAME, self.USER
         self.db = get_database('dbname=%s user=%s' % args)
             
@@ -710,7 +699,7 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
 
 
 @skipUnless(TEST_MYSQL, 'Failed to import MySQLDb or PyMySQL module.')
-class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
+class MySqlTestCase(AbstractDatabaseTestCase, TestCase):
     
     DBNAME = 'fathom'
     USER = 'fathom'
@@ -719,7 +708,7 @@ class MySqlTestCase(DatabaseWithProceduresTestCase, TestCase):
     DEFAULT_INTEGER_TYPE_NAME = 'int'
     CREATES_INDEX_FOR_REFERENCES = True
 
-    TABLES = DatabaseWithProceduresTestCase.TABLES.copy()
+    TABLES = AbstractDatabaseTestCase.TABLES.copy()
     TABLES['one_unique_column'] = '''
 CREATE TABLE one_unique_column (col integer UNIQUE) ENGINE = INNODB'''
     TABLES['primary_key_only'] = '''
@@ -738,7 +727,7 @@ CREATE TABLE reference_two_tables (
     FOREIGN KEY (ref2) REFERENCES primary_key_only(id)
 ) ENGINE = INNODB'''
 
-    PROCEDURES = DatabaseWithProceduresTestCase.PROCEDURES.copy()
+    PROCEDURES = AbstractDatabaseTestCase.PROCEDURES.copy()
     PROCEDURES['foo_double'] = '''
 CREATE FUNCTION foo_double (value int4)
     RETURNS INTEGER
@@ -762,7 +751,7 @@ CREATE PROCEDURE get_accessing_procedures_2()
     END'''
     
     def setUp(self):
-        DatabaseWithProceduresTestCase.setUp(self)
+        AbstractDatabaseTestCase.setUp(self)
         args = self.DBNAME, self.USER
         self.db = get_database(user=self.USER, db=self.DBNAME)
         
@@ -824,7 +813,7 @@ CREATE PROCEDURE get_accessing_procedures_2()
 
 
 @skipUnless(TEST_ORACLE, 'Failed to import cx_Oracle module.')
-class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
+class OracleTestCase(AbstractDatabaseTestCase, TestCase):
     
     # watch out when running those tests, cx_Oracle likes to segfault
 
@@ -836,24 +825,24 @@ class OracleTestCase(DatabaseWithProceduresTestCase, TestCase):
     HAS_USABLE_INDEX_NAMES = False
     
     TABLES = {}
-    for key, value in DatabaseWithProceduresTestCase.TABLES.items():
+    for key, value in AbstractDatabaseTestCase.TABLES.items():
         name = key.upper() if key.lower() == key else key
         TABLES[name] = value
     # oracle doesn't accept reserved words as identifiers at all
     TABLES.pop('reserved_word_column'.upper())
         
     TRIGGERS = {}
-    for key, value in DatabaseWithProceduresTestCase.TRIGGERS.items():
+    for key, value in AbstractDatabaseTestCase.TRIGGERS.items():
         name = key.upper() if key.lower() == key else key
         TRIGGERS[name] = value
         
     INDICES = {}
-    for key, value in DatabaseWithProceduresTestCase.INDICES.items():
+    for key, value in AbstractDatabaseTestCase.INDICES.items():
         name = key.upper() if key.lower() == key else key
         INDICES[name] = value
     
     VIEWS = {}
-    for key, value in DatabaseWithProceduresTestCase.VIEWS.items():
+    for key, value in AbstractDatabaseTestCase.VIEWS.items():
         name = key.upper() if key.lower() == key else key
         VIEWS[name] = value
                 
@@ -873,7 +862,7 @@ CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
 '''
 
     def setUp(self):
-        DatabaseWithProceduresTestCase.setUp(self)
+        AbstractDatabaseTestCase.setUp(self)
         self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
 
     def test_case_sensitivity(self):
@@ -916,28 +905,11 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
     PRIMARY_KEY_IS_NOT_NULL = False
     CREATES_INDEX_FOR_PRIMARY_KEY = False
     USES_CASE_SENSITIVE_IDENTIFIERS = False
+    USES_PROCEDURES = False
     
     TABLES = AbstractDatabaseTestCase.TABLES.copy()
-    TABLES['django_admin_log'] = '''
-        CREATE TABLE "django_admin_log" (
-            "id" integer NOT NULL PRIMARY KEY,
-            "action_time" datetime NOT NULL,
-            "user_id" integer NOT NULL REFERENCES "auth_user" ("id"),
-            "content_type_id" integer REFERENCES "django_content_type" ("id"),
-            "object_id" text,
-            "object_repr" varchar(200) NOT NULL,
-            "action_flag" smallint unsigned NOT NULL,
-            "change_message" text NOT NULL
-        )'''
-    TABLES['auth_permission'] = '''
-        CREATE TABLE "auth_permission" (
-            "id" integer NOT NULL PRIMARY KEY,
-            "name" varchar(50) NOT NULL,
-            "content_type_id" integer NOT NULL,
-            "codename" varchar(100) NOT NULL,
-            UNIQUE ("content_type_id", "codename")
-        )'''
-
+    del TABLES['some_table']
+    
     def setUp(self):
         AbstractDatabaseTestCase.setUp(self)
         self.db = get_database(self.PATH)
@@ -949,39 +921,23 @@ class SqliteTestCase(AbstractDatabaseTestCase, TestCase):
         
     def test_case_sensitivity(self):
         self.assertEqual(self.db.case_sensitivity, constants.CASE_INSENSITIVE)
-            
-    def test_sqlite_table_django_admin_log(self):
-        table = self.db.tables['django_admin_log']
-        values = (('id', 'integer', True), ('action_time', 'datetime', True),
-                  ('user_id', 'integer', True), 
-                  ('content_type_id', 'integer', False),
-                  ('object_id', 'text', False), 
-                  ('object_repr', 'varchar(200)', True),
-                  ('action_flag', 'smallint unsigned', True),
-                  ('change_message', 'text', True))
-        self.assertColumns(table, values)
-
-    def test_sqlite_table_auth_permission(self):
-        table = self.db.tables['auth_permission']
-        values = (('id', 'integer', True), ('name', 'varchar(50)', True),
-                  ('content_type_id', 'integer', True),
-                  ('codename', 'varchar(100)', True))
-        self.assertColumns(table, values)
 
     def test_index_names(self):
         indices = {self.case('one_column_index'), 
                    self.index_name('two_double_uniques', 'x', 'y', count=1),
                    self.index_name('two_double_uniques', 'x', 'z', count=2),
                    self.index_name('one_unique_column', 'col'),
-                   self.index_name('two_columns_unique', 'col1', 'col2'),
-                   self.index_name('auth_permission', 'content_type_id', 
-                                   'codename')}
+                   self.index_name('two_columns_unique', 'col1', 'col2')}
         if self.CREATES_INDEX_FOR_PRIMARY_KEY:
             indices.add(self.pkey_index_name('primary_key_only', 'id'))
         if self.HAS_USABLE_INDEX_NAMES:
             self.assertEqual(set(self.db.indices.keys()), indices)
         else:
             self.assertEqual(len(self.db.indices.keys()), len(indices))
+
+    def test_index_one_column_index(self):
+        index = self.db.indices[self.case('one_column_index')]
+        self.assertFalse(index.is_unique)
         
     # sqlite internal methods required for testing
 
