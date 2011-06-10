@@ -9,6 +9,31 @@ class Named(object):
         super(Named, self).__init__()
         self.name = name
 
+
+def build_get_database_objects_function(name):
+    def function(self):
+        if getattr(self, '_' + name, None) is None:
+            if self.inspector is not None:
+                dictionary = getattr(self.inspector, 'get_' + name)()
+                for obj in dictionary.values():
+                    obj.database = self
+                setattr(self, '_' + name, dictionary)
+            else:
+                setattr(self, '_' + name, {})
+        return getattr(self, '_' + name)
+    return function
+    
+def build_set_database_objects_function(name):
+    def function(self, dictionary):
+        assert self.inspector is None, \
+               'Cannot set tables on already inspected database!'
+        setattr(self, '_' + name, dictionary)
+    return function
+        
+def build_accessors(name):
+    return (build_get_database_objects_function(name),
+            build_set_database_objects_function(name))
+
 class Database(Named):
     
     def __init__(self, name='', inspector=None, **kwargs):
@@ -33,74 +58,12 @@ class Database(Named):
         return self.inspector.CASE_SENSITIVITY
     case_sensitivity = property(_get_case_sensitivity)
         
-    def get_refresh_method(name):
-        def refresh_attribute(self):
-            if self.inspector is not None:
-                value = getattr(self.inspector, 'get_' + name)()
-                setattr(self, '_' + name,  value)
-            else:
-                setattr(self, '_' + name, {})
-        return refresh_attribute
-
-    _refresh_tables = get_refresh_method('tables')
+    tables = property(*build_accessors('tables'))
+    views = property(*build_accessors('views'))
+    procedures = property(*build_accessors('procedures'))
+    indices = property(*build_accessors('indices'))
+    triggers = property(*build_accessors('triggers'))
             
-    def _get_tables(self):
-        if self._tables is None:
-            self._refresh_tables()
-            for table in self._tables.values():
-                table.database = self
-        return self._tables
-
-    def _set_tables(self, tables):
-        assert self.inspector is None, "Cannot set tables on already inspected database"
-        self._tables = tables
-	 
-    tables = property(_get_tables, _set_tables)
-    
-    _refresh_views = get_refresh_method('views')
-    
-    def _get_views(self):
-        if self._views is None:
-            self._refresh_views()
-            for view in self._views.values():
-                view.database = self            
-        return self._views
-        
-    views = property(_get_views)
-
-    _refresh_procedures = get_refresh_method('procedures')
-    
-    def _get_procedures(self):
-        if self._procedures is None:
-            self._refresh_procedures()
-            for procedure in self._procedures.values():
-                procedure.database = self            
-        return self._procedures
-    
-    procedures = property(_get_procedures)
-    
-    _refresh_indices = get_refresh_method('indices')
-    
-    def _get_indices(self):
-        if self._indices is None:
-            self._refresh_indices()
-            for index in self._indices.values():
-                index.database = self
-        return self._indices
-        
-    indices = property(_get_indices)
-    
-    _refresh_triggers = get_refresh_method('triggers')
-    
-    def _get_triggers(self):
-        if self._triggers is None:
-            self._refresh_triggers()
-            for trigger in self._triggers.values():
-                trigger.database = self
-        return self._triggers
-        
-    triggers = property(_get_triggers)
-    
     def supports_stored_procedures(self):
         return self.inspector.supports_stored_procedures()
     
