@@ -450,6 +450,12 @@ SELECT routine_name, dtd_identifier, routine_definition
 FROM information_schema.routines
 """
 
+    _PROCEDURE_ARGUMENTS_SQL = """
+SELECT parameter_name, data_type, character_maximum_length, parameter_mode
+FROM information_schema.parameters
+WHERE specific_name = '%s' AND parameter_name IS NOT NULL
+"""
+
     _TRIGGER_NAMES_SQL = """
 SELECT trigger_name, event_object_table, event_manipulation, action_timing
 FROM information_schema.triggers
@@ -536,10 +542,12 @@ WHERE table_name = '%s'
         return triggers
         
     def build_procedure(self, procedure):
+        procedure.arguments = {}
         if self.supports_routine_parametres():
-            procedure.arguments = {} # i need mysql 5.5 for this
-        else:
-            procedure.arguments = {}
+            # needs mysql 5.5 for this
+            sql = self._PROCEDURE_ARGUMENTS_SQL % procedure.name
+            for row in self._select(sql):
+                procedure.arguments[row[0]] = Argument(row[0], row[1])
 
     def build_foreign_keys(self, table):
         sql = self._FOREIGN_KEYS_SQL % table.name

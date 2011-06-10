@@ -110,6 +110,8 @@ def procedure_test(procedure_name, arguments_count, returns):
             self.assertEqual(procedure.returns, 
                              None if returns is None else self.case(returns))
             test(self, procedure)
+        # this fancy stuff is required for unittest to detect test method
+        result.__name__ = test.__name__
         return result
     return decorator
 
@@ -780,8 +782,14 @@ CREATE PROCEDURE get_accessing_procedures_2()
     def test_case_sensitivity(self):
         self.assertEqual(self.db.case_sensitivity, constants.CASE_SENSITIVE)
     
-    @procedure_test('foo_double', 0, 'integer')
-    def test_foo_double(self, procedure):
+    def test_foo_double(self):
+        procedure = self.db.procedures[self.case('foo_double')]
+        if self.db.version >= (5, 5):
+            self.assertEqual(len(procedure.arguments), 1)
+            self.assertArguments(procedure, [('value', 'int')])
+        else:
+            self.assertEqual(len(procedure.arguments), 0)
+        self.assertEqual(procedure.returns, 'integer')
         self.assertEqual(procedure.database, self.db)
         self.assertEqual(procedure.sql, 'RETURN 2 * value')
 
