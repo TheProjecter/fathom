@@ -263,6 +263,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
 
     def test_table_one_column(self):
         table = self.db.tables[self.case('one_column')]
+        self.assertEqual(table.database, self.db)
         column = self.case('col')
         self.assertEqual(set(table.columns.keys()), set([column]))
         self.assertEqual(table.columns[column].type, 
@@ -349,6 +350,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         
     def test_view_one_column_view(self):
         view = self.db.views[self.case('one_column_view')]
+        self.assertEqual(view.database, self.db)
         self.assertEqual(set(view.columns.keys()), set([self.case('col')]))
                          
     def test_view_case_sensitive_view(self):
@@ -362,6 +364,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         
     def test_trigger_before_insert_trigger(self):
         trigger = self.db.triggers[self.case('before_insert_trigger')]
+        self.assertEqual(trigger.database, self.db)        
         self.assertEqual(trigger.table, self.case('one_column'))
         self.assertEqual(trigger.when, Trigger.BEFORE)
         self.assertEqual(trigger.event, Trigger.INSERT)
@@ -389,6 +392,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
         
     def test_index_one_column_index(self):
         index = self.db.indices[self.case('one_column: one_column_index')]
+        self.assertEqual(index.database, self.db)
         self.assertFalse(index.is_unique)
         
     # procedure tests
@@ -611,6 +615,7 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
 
     @procedure_test('fib(int4)', 1, 'int4')
     def test_fib_integer(self, procedure):
+        self.assertEqual(procedure.database, self.db)
         self.assertArguments(procedure, [('fib_for', 'int4')])
         self.assertEqual(procedure.sql, '''
     BEGIN
@@ -777,10 +782,12 @@ CREATE PROCEDURE get_accessing_procedures_2()
     
     @procedure_test('foo_double', 0, 'integer')
     def test_foo_double(self, procedure):
+        self.assertEqual(procedure.database, self.db)
         self.assertEqual(procedure.sql, 'RETURN 2 * value')
 
     @procedure_test('simple_proc', 0, None)
     def test_simple_proc(self, procedure):
+        self.assertEqual(procedure.database, self.db)
         self.assertEqual(procedure.sql, 'BEGIN\nEND')
 
     def test_index_names(self):
@@ -888,11 +895,11 @@ CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
     
     @procedure_test('foo_double', 0, 'varchar2')
     def test_procedure_foo_double(self, procedure):
-        pass
+        self.assertEqual(procedure.database, self.db)
 
     @procedure_test('simple_proc', 1, None)
     def test_procedure_simple_proc(self, procedure):
-        pass
+        self.assertEqual(procedure.database, self.db)
 
     def index_name(self, table_name, *columns, count=1):
         # these index names are not generated this way, but we need to keep 

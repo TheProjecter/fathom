@@ -62,6 +62,8 @@ class Database(Named):
     def _get_views(self):
         if self._views is None:
             self._refresh_views()
+            for view in self._views.values():
+                view.database = self            
         return self._views
         
     views = property(_get_views)
@@ -71,6 +73,8 @@ class Database(Named):
     def _get_procedures(self):
         if self._procedures is None:
             self._refresh_procedures()
+            for procedure in self._procedures.values():
+                procedure.database = self            
         return self._procedures
     
     procedures = property(_get_procedures)
@@ -80,6 +84,8 @@ class Database(Named):
     def _get_indices(self):
         if self._indices is None:
             self._refresh_indices()
+            for index in self._indices.values():
+                index.database = self
         return self._indices
         
     indices = property(_get_indices)
@@ -89,6 +95,8 @@ class Database(Named):
     def _get_triggers(self):
         if self._triggers is None:
             self._refresh_triggers()
+            for trigger in self._triggers.values():
+                trigger.database = self
         return self._triggers
         
     triggers = property(_get_triggers)
@@ -145,20 +153,23 @@ class Table(Named, WithColumns):
 
 class View(Named, WithColumns):
     
-    def __init__(self, name, inspector=None, **kwargs):
+    def __init__(self, name, database=None, inspector=None, **kwargs):
         super(View, self).__init__(name, **kwargs)
         self.inspector = inspector
+        self.database = database
 
 
 class Index(Named):
     
-    def __init__(self, name, table, base_name=None, inspector=None, **kwargs):
+    def __init__(self, name, table, base_name=None, database=None, 
+                 inspector=None, **kwargs):
         super(Index, self).__init__(name, **kwargs)
         self.table = table
         self._columns = None
         self.is_unique = False
         self.inspector = inspector
         self.base_name = base_name if base_name is not None else name
+        self.database = database
         
     def _get_columns(self):
         if self._columns is None:
@@ -170,7 +181,7 @@ class Index(Named):
         
 class Procedure(Named):
     
-    def __init__(self, name, inspector=None, **kwargs):
+    def __init__(self, name, database=None, inspector=None, **kwargs):
         super(Procedure, self).__init__(name, **kwargs)
         self._arguments = None
         self.returns = None
@@ -202,12 +213,14 @@ class Trigger(Named):
     BEFORE, AFTER, INSTEAD = range(3)
     UPDATE, INSERT, DELETE = range(3)
     
-    def __init__(self, name, when=None, event=None, inspector=None, **kwargs):
+    def __init__(self, name, when=None, event=None, database=None, 
+                 inspector=None, **kwargs):
         super(Trigger, self).__init__(name, **kwargs)
         self._table = None
         self.when = when
         self.event = event
         self.inspector = inspector
+        self.database = database
         
     def _get_table(self):
         if self._table is None:
