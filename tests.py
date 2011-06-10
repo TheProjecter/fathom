@@ -663,14 +663,29 @@ EXECUTE PROCEDURE before_update_trigger_function()''', 'one_unique_column')
         self.assertEqual(set(procedures), set(names))
                         
     # postgresql internal methods required for testing
-        
+            
     def index_name(self, table_name, *columns, count=1):
+        # different versions of postgres use different kinds of index names
+        if self.db.version >= (9, 0, 0):
+            return self.index_name9(table_name, *columns)
+        else:
+            return self.index_name8(table_name, *columns, count=count)
+            
+    def index_name9(self, table_name, *columns, count=1):
+        if len(columns):
+            columns = '_'.join((column for column in columns))
+            name = '%s: %s_%s_key' % (table_name, table_name, columns)
+        else:
+            name = '%s: %s_column_key' % (table_name, table_name)
+        return name
+                    
+    def index_name8(self, table_name, *columns, count=1):
         if len(columns):
             name = '%s: %s_%s_key' % (table_name, table_name, columns[0])
         else:
             name = '%s: %s_column_key' % (table_name, table_name)
         if count > 1:
-            # postgres has really strange way of indexing index names; first
+            # postgres 8.* has curios way of indexing index names; first
             # has no suffix, the following add count suffix beginning with 1
             name += str(count - 1)
         return name

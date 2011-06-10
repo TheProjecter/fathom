@@ -307,6 +307,10 @@ SELECT column_name
 FROM information_schema.columns
 WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
 
+    _VERSION_SQL = """
+SELECT version()
+"""
+
     _BEFORE_BIT = 2
     _INSERT_BIT, _DELETE_BIT, _UPDATE_BIT = 4, 8, 16
     
@@ -314,6 +318,16 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
         DatabaseInspector.__init__(self, *db_params)
         import psycopg2
         self._api = psycopg2
+        self.set_version()
+
+    def set_version(self):
+        try:
+            version = self._select(self._VERSION_SQL)[0][0]
+            version = version[len('PostgreSQL') + 1:version.index('on')]
+            self.version = tuple([int(step) for step in version.split('.')])
+        except Exception as e:
+            print('Warning: failed to obtain MySQL version; assuming 8.4.0')
+            version = (8, 4, 0)
                              
     def build_procedure(self, procedure):
         arg_type_oids = procedure._private['arg_type_oids']
