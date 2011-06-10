@@ -6,6 +6,7 @@ syntax: glob
 *.pdf
 *.dot
 *.orig
+*.rej
 
 build
 dist
