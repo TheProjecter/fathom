@@ -35,11 +35,8 @@ class DatabaseInspector(metaclass=ABCMeta):
                                 
     def get_indices(self):
         '''Return names of all indices in the database.'''
-        result = {}
-        for row in self._select(self._INDEX_NAMES_SQL):
-            name = '%s: %s' % (row[1], row[0])
-            result[name] = Index(name, row[1], base_name=row[0], inspector=self)
-        return result
+        return dict(self.prepare_index(row)
+                    for row in self._select(self._INDEX_NAMES_SQL))
         
     def get_procedures(self): 
         '''Return names of all stored procedures in the database.'''
@@ -133,6 +130,10 @@ SELECT name, tbl_name
 FROM sqlite_master
 WHERE type = 'index'
 """
+
+    _INDEX_UNIQUENESS_SQL = """
+pragma index_list(%s)
+"""
     
     _COLUMN_NAMES_SQL = """
 pragma table_info(%s)
@@ -165,10 +166,13 @@ WHERE type='trigger' AND name = '%s'"""
     def get_procedures(self):
         return {}
 
-    def get_indices(self):
-        '''Return names of all indices in the database.'''
-        return {'%s' % row[0]: Index(row[0], row[1], inspector=self) 
-                for row in self._select(self._INDEX_NAMES_SQL)}
+    def prepare_index(self, row):
+        index = Index(row[0], row[1], inspector=self)
+        for index_row in self._select(self._INDEX_UNIQUENESS_SQL % row[1]):
+            if index_row[1] == row[0]:
+                index.is_unique = (index_row[2] == 1)
+                break
+        return row[0], index    
         
     def build_columns(self, schema_object):
         sql = self._COLUMN_NAMES_SQL % schema_object.name
@@ -256,9 +260,16 @@ FROM information_schema.columns
 WHERE table_name = '%s'"""
                            
     _INDEX_NAMES_SQL = """
-SELECT indexname, tablename
-FROM pg_indexes
-WHERE schemaname = 'public'"""
+SELECT i.relname AS indexname, c.relname AS tablename, x.indisunique,  
+       pg_get_indexdef(i.oid) AS indexdef
+FROM pg_index x
+JOIN pg_class c ON c.oid = x.indrelid
+JOIN pg_class i ON i.oid = x.indexrelid
+LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_tablespace t ON t.oid = i.reltablespace
+WHERE c.relkind = 'r'::"char" AND i.relkind = 'i'::"char" AND 
+      n.nspname = 'public';
+"""
 
     _PROCEDURE_NAMES_SQL = """
 SELECT proname, proargtypes, prosrc, prorettype
@@ -388,6 +399,12 @@ WHERE table_name = '%s' AND ordinal_position IN ('%s')"""
         procedure._private['arg_type_oids'] = row[1]
         return name, procedure
         
+    def prepare_index(self, row):
+        name = '%s: %s' % (row[1], row[0])
+        index = Index(name, row[1], base_name=row[0], inspector=self)
+        index.is_unique = row[2]
+        return name, index        
+        
     def types_from_oids(self, oids):
         return [self._select(self._TYPE_SQL % oid)[0][0] for oid in oids]
     
@@ -432,7 +449,7 @@ WHERE table_name = '%s'
 """
 
     _INDEX_NAMES_SQL = """
-SELECT index_name, table_name
+SELECT index_name, table_name, non_unique
 FROM information_schema.statistics
 """
 
@@ -486,6 +503,12 @@ WHERE table_name = '%s'
         procedure.sql = row[2]
         procedure._private['arg_type_oids'] = row[1]
         return row[0], procedure
+        
+    def prepare_index(self, row):
+        name = '%s: %s' % (row[1], row[0])
+        index = Index(name, row[1], base_name=row[0], inspector=self)
+        index.is_unique = not row[2]
+        return name, index
         
     def get_triggers(self):
         '''Returns names of all triggers in the database.'''
@@ -579,7 +602,7 @@ WHERE table_name = '%s'
 """
    
     _INDEX_NAMES_SQL = """
-SELECT index_name, table_name
+SELECT index_name, table_name, uniqueness
 FROM user_indexes
 """
 
@@ -635,6 +658,12 @@ ORDER BY position
         sql = self._ARGUMENTS_SQL % procedure.name
         procedure.arguments = {row[0]: Argument(row[0], row[1]) 
                                for row in self._select(sql)}
+                               
+    def prepare_index(self, row):
+        name = '%s: %s' % (row[1], row[0])
+        index = Index(name, row[1], base_name=row[0], inspector=self)
+        index.is_unique = (row[2] == 'UNIQUE')
+        return name, index                               
                 
     def build_foreign_keys(self, table):
         table.foreign_keys = []
