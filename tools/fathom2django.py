@@ -10,6 +10,10 @@ class DjangoExporter:
     
     def __init__(self, db, filter=None, output=None):
         self.tables = db.tables
+        # here we gather tables, that will be turned into ManyToManyFields
+        self.through_tables = {}
+        # here we gather tables, that were already used as ManyToMAnyFields
+        self.used_through_tables = {}
         self.filter = filter
         self.output = output
         
@@ -26,7 +30,6 @@ class DjangoExporter:
 
     def gather_through_tables(self):
         tables = {}
-        self.through_tables = {}
         for name, table in self.tables.items():
             through, explicit = self.is_through_table(table)
             if through:
@@ -96,16 +99,24 @@ class DjangoExporter:
     def build_many_to_many_fields(self, table):
         deleted = []
         result = []
-        for through_table in self.through_tables.values():
-            if self.needs_many_to_many(table, through_table):
-                deleted.append(through_table.name)
-                fks = through_table.foreign_keys
+        for through in self.through_tables.values():
+            if self.needs_many_to_many(table, through):
+                deleted.append(through.name)
+                fks = through.foreign_keys
                 index = 1 if fks[0].referenced_table == table.name else 0
                 args = (fks[index].referenced_table, 
                         self.build_class_name(fks[index].referenced_table))
                 result.append("%s = models.ManyToManyField('%s')\n" % args)
+        for through in self.used_through_tables.values():
+            if self.needs_many_to_many(table, through):
+                fks = through.foreign_keys
+                index = 1 if fks[0].referenced_table == table.name else 0
+                name = self.build_class_name(fks[index].referenced_table)
+                result.append('# ManyToManyField was created in %s\n' % name)
+                args = (fks[index].referenced_table, name)
+                result.append("# %s = models.ManyToManyField('%s')\n" % args)                
         for name in deleted:
-            del self.through_tables[name]
+            self.used_through_tables[name] = self.through_tables.pop(name)
         return result
             
     def needs_many_to_many(self, table, through_table):
