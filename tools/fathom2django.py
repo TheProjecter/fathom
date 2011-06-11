@@ -102,22 +102,28 @@ class DjangoExporter:
         for through in self.through_tables.values():
             if self.needs_many_to_many(table, through):
                 deleted.append(through.name)
-                fks = through.foreign_keys
-                index = 1 if fks[0].referenced_table == table.name else 0
-                args = (fks[index].referenced_table, 
-                        self.build_class_name(fks[index].referenced_table))
-                result.append("%s = models.ManyToManyField('%s')\n" % args)
+                result.append(self.build_many_to_many_field(table, through))
         for through in self.used_through_tables.values():
             if self.needs_many_to_many(table, through):
-                fks = through.foreign_keys
-                index = 1 if fks[0].referenced_table == table.name else 0
-                name = self.build_class_name(fks[index].referenced_table)
-                result.append('# ManyToManyField was created in %s\n' % name)
-                args = (fks[index].referenced_table, name)
-                result.append("# %s = models.ManyToManyField('%s')\n" % args)                
+                result += self.build_many_to_many_comments(table, through)
         for name in deleted:
             self.used_through_tables[name] = self.through_tables.pop(name)
         return result
+        
+    def build_many_to_many_field(self, table, through_table):
+        fks = through_table.foreign_keys
+        index = 1 if fks[0].referenced_table == table.name else 0
+        args = (fks[index].referenced_table, 
+                self.build_class_name(fks[index].referenced_table))
+        return "%s = models.ManyToManyField('%s')\n" % args
+
+    def build_many_to_many_comments(self, table, through_table):
+        fks = through_table.foreign_keys
+        index = 1 if fks[0].referenced_table == table.name else 0
+        class_name = self.build_class_name(fks[index].referenced_table)
+        args = (fks[index].referenced_table, class_name)
+        return ['# ManyToManyField was created in %s\n' % class_name,
+                "# %s = models.ManyToManyField('%s')\n" % args]
             
     def needs_many_to_many(self, table, through_table):
         return table.name in self.referenced_tables(through_table)
