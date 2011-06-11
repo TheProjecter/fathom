@@ -9,11 +9,12 @@ DESCRIPTION = 'Build django models from database schema.'
 class DjangoExporter:
     
     def __init__(self, db, filter=None, output=None):
-        self.db = db
+        self.tables = db.tables
         self.filter = filter
         self.output = output
         
     def run(self):
+        self.gather_through_tables()
         self.filter_tables()
         result = ''.join([self.table2django(table) 
                           for table in self.tables.values()])
@@ -22,20 +23,31 @@ class DjangoExporter:
                 file.write(result)
         else:
             print(result)
+
+    def gather_through_tables(self):
+        tables = {}
+        self.through_tables = {}
+        for name, table in self.tables.items():
+            through, explicit = self.is_through_table(table)
+            if through:
+                self.through_tables[name] = table
+            if not through or explicit:
+                tables[name] = table
+        self.tables = tables
+
+    @staticmethod
+    def is_through_table(table):
+        return len(table.foreign_keys) == 2, len(table.columns) > 3
     
     def filter_tables(self):
         if self.filter is not None:
-            self.tables = {key: value for key, value in self.db.tables.items() 
+            self.tables = {key: value for key, value in self.tables.items() 
                                       if match(self.filter, key)}
-        else:
-            self.tables = self.db.tables
 
-        
     def table2django(self, table):
         class_name = self.build_class_name(table)
-        fields = self.build_fields(table)
         result = 'class %s(model.Model):\n' % class_name
-        for field in fields:
+        for field in self.build_fields(table):
             result += '    %s' % field
         result += '''\n    class Meta:
             db_table = %s''' % table.name
@@ -79,8 +91,26 @@ class DjangoExporter:
                 comment = '# failed to build field for column %s: %s\n' % \
                           (column.name, column.type)
                 result.append(comment)
-        return result
+        return result + self.build_many_to_many_fields(table)
         
+    def build_many_to_many_fields(self, table):
+        deleted = []
+        result = []
+        for through_table in self.through_tables.values():
+            if self.needs_many_to_many(table, through_table):
+                deleted.append(through_table.name)
+                fks = through_table.foreign_keys
+                index = 1 if fks[0].referenced_table == table.name else 0
+                args = (fks[index].referenced_table, 
+                        self.build_class_name(fks[index].referenced_table))
+                result.append("%s = models.ManyToManyField('%s')\n" % args)
+        for name in deleted:
+            del self.through_tables[name]
+        return result
+            
+    def needs_many_to_many(self, table, through_table):
+        return table.name in self.referenced_tables(through_table)
+
     def try_foreign_key(self, table, column):
         for fk in table.foreign_keys:
             if len(fk.columns) == 1 and column.name == fk.columns[0]:
@@ -91,6 +121,9 @@ class DjangoExporter:
     def build_varchar_field(self, column):
         length = int(column.type.split('(')[1][:-1])
         return '%s = model.CharField(max_length=%d)\n' % (column.name, length)
+        
+    def referenced_tables(self, table):
+        return tuple((fk.referenced_table for fk in table.foreign_keys))
         
 def main():
     parser = FathomArgumentParser(description=DESCRIPTION)
