@@ -16,6 +16,8 @@ class FathomArgumentParser(ArgumentParser):
     type and arguments for connecting to the database. It is supposed to
     ease building of new tools that are based on fathom library.'''
     
+    DATABASES = ('postgresql', 'sqlite3', 'mysql', 'oracle')
+    
     def __init__(self, *args, **kwargs):
         ArgumentParser.__init__(self, *args, **kwargs)
         self.add_database_subparsers()
@@ -27,14 +29,14 @@ class FathomArgumentParser(ArgumentParser):
     def add_database_subparsers(self):
         subparsers = self.add_subparsers(dest="database_type",
                                          parser_class=ArgumentParser)
-        for name in ('postgres', 'sqlite', 'mysql'):
+        for name in self.DATABASES:
             getattr(self, 'add_%s_subparser' % name)(subparsers)
 
-    def add_postgres_subparser(self, subparsers):
+    def add_postgresql_subparser(self, subparsers):
         postgres = subparsers.add_parser('postgresql')
         postgres.add_argument('string', type=str, help='connection string')
     
-    def add_sqlite_subparser(self, subparsers):
+    def add_sqlite3_subparser(self, subparsers):
         sqlite = subparsers.add_parser('sqlite3')
         sqlite.add_argument('path', type=str, help='database path')
     
@@ -45,10 +47,14 @@ class FathomArgumentParser(ArgumentParser):
         mysql.add_argument('-p', '--password', type=str, help='database password')
         mysql.add_argument('-H', '--host', type=str, help='database host')
         mysql.add_argument('-P', '--port', type=str, help='database port')
+        
+    def add_oracle_subparser(self, subparsers):
+        oracle = subparsers.add_parser('oracle')
+        oracle.add_argument('username', type=str, help='user name')
+        oracle.add_argument('password', type=str, help='user password')
 
     def get_database(self, args):
-        assert args['database_type'] in ('postgresql', 'sqlite3', 'mysql'), \
-               'Unknown database type.'
+        assert args['database_type'] in self.DATABASES, 'Unknown database type.'
         if args['database_type'] == 'sqlite3':
             from . import get_sqlite3_database
             return get_sqlite3_database(args['path'])
@@ -57,6 +63,9 @@ class FathomArgumentParser(ArgumentParser):
             return get_postgresql_database(args['string'])
         elif args['database_type'] == 'mysql':
             return self.get_mysql_database(args)
+        elif args['database_type'] == 'oracle':
+            from . import get_oracle_database
+            return get_oracle_database(args['username'], args['password'])
             
     def _get_mysql_database(self, args):
         kwargs = {}
