@@ -4,7 +4,6 @@
 from distutils.core import setup
 
 setup(name='fathom', version='0.4.0', packages=['fathom'], 
-      scripts=['tools/fathom2django.py', 'tools/fathom2graphviz.py'],
       author="Filip Gruszczyński", author_email="gruszczy@gmail.com",
       description="database inspection library",
       url='http://code.google.com/p/fathom',
