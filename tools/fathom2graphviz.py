@@ -42,8 +42,11 @@ def table_connections(table):
 
 def main():
     parser = FathomArgumentParser(description=DESCRIPTION)
-    parser.add_argument('--include-columns', action='store_true', default=False)
+    parser.add_argument('--include-columns', action='store_true', default=False,
+                        help='shows columns in the result')
     parser.add_argument('-o', '--output', help='print output to a file')
+    parser.add_argument('-d', '--dot', metavar='FORMAT',
+                        help='runs dot and produces output in given format')
     db, args = parser.parse_args()
     database2graphviz(db, args)
 
