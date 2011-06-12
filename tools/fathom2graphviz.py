@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+from subprocess import Popen, PIPE
+
 from fathom.utils import FathomArgumentParser
 
 DESCRIPTION = 'Build graphviz ER diagrams from database schema.'
@@ -13,11 +15,19 @@ def database2graphviz(db, args):
     result += '\n'.join([connection for connection in all_table_connections
                                     if connection]) + '\n\n'
     result += "}\n"
+    mode = 'w'
+    if args.dot is not None:
+        result = run_dot(result, args.dot)
+        mode += 'b'
     if args.output is not None:
-        with open(args.output, 'w') as file:
+        with open(args.output, mode) as file:
             file.write(result)
     else:
         print(result)
+
+def run_dot(code, format):
+    process = Popen(['dot', '-T', format], stdin=PIPE, stdout=PIPE)
+    return process.communicate(input=bytes(code, 'utf-8'))[0]
 
 def table_node(table, args):
     if not args.include_columns:
