@@ -33,7 +33,7 @@ class DjangoExporter:
         for name, table in self.tables.items():
             through, explicit = self.is_through_table(table)
             if through:
-                self.through_tables[name] = table
+                self.through_tables[name] = table, explicit
             if not through or explicit:
                 tables[name] = table
         self.tables = tables
@@ -99,31 +99,49 @@ class DjangoExporter:
     def build_many_to_many_fields(self, table):
         deleted = []
         result = []
-        for through in self.through_tables.values():
+        for through, explicit in self.through_tables.values():
             if self.needs_many_to_many(table, through):
                 deleted.append(through.name)
-                result.append(self.build_many_to_many_field(table, through))
-        for through in self.used_through_tables.values():
+                result.append(self.build_many_to_many_field(table, through, 
+                                                            explicit))
+        for through, explicit in self.used_through_tables.values():
             if self.needs_many_to_many(table, through):
-                result += self.build_many_to_many_comments(table, through)
+                result += self.build_many_to_many_comments(table, through,
+                                                           explicit)
         for name in deleted:
             self.used_through_tables[name] = self.through_tables.pop(name)
         return result
         
-    def build_many_to_many_field(self, table, through_table):
+    def build_many_to_many_field(self, table, through_table, explicit):
         fks = through_table.foreign_keys
         index = 1 if fks[0].referenced_table == table.name else 0
-        args = (fks[index].referenced_table, 
-                self.build_class_name(fks[index].referenced_table))
-        return "%s = models.ManyToManyField('%s')\n" % args
+        if explicit:
+            args = (fks[index].referenced_table, 
+                    self.build_class_name(fks[index].referenced_table),
+                    self.build_class_name(through_table.name))
+            return "%s = models.ManyToManyField('%s', through='%s')\n" % args            
+        else:
+            args = (fks[index].referenced_table, 
+                    self.build_class_name(fks[index].referenced_table),
+                    through_table.name)
+            return "%s = models.ManyToManyField('%s', db_table='%s')\n" % args
 
-    def build_many_to_many_comments(self, table, through_table):
+    def build_many_to_many_comments(self, table, through_table, explicit):
         fks = through_table.foreign_keys
         index = 1 if fks[0].referenced_table == table.name else 0
         class_name = self.build_class_name(fks[index].referenced_table)
-        args = (fks[index].referenced_table, class_name)
-        return ['# ManyToManyField was created in %s\n' % class_name,
-                "# %s = models.ManyToManyField('%s')\n" % args]
+        through_name = self.build_class_name(through_table.name)
+        comment = '# ManyToManyField was created in %s\n' % class_name
+        if explicit:
+            args = (fks[index].referenced_table, class_name,
+                    through_name)
+            field = "# %s = models.ManyToManyField('%s', through='%s')\n"
+            return [comment, field % args]
+        else:
+            args = (fks[index].referenced_table, class_name,
+                    through_table.name)
+            field = "# %s = models.ManyToManyField('%s', db_table='%s')\n"
+            return [comment, field % args]
             
     def needs_many_to_many(self, table, through_table):
         return table.name in self.referenced_tables(through_table)
