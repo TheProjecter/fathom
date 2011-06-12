@@ -38,9 +38,16 @@ class DjangoExporter:
                 tables[name] = table
         self.tables = tables
 
-    @staticmethod
-    def is_through_table(table):
-        return len(table.foreign_keys) == 2, len(table.columns) > 3
+    def is_through_table(self, table):
+        fks = table.foreign_keys
+        is_through = (len(table.foreign_keys) == 2 and
+                      fks[0].referenced_table != fks[1].referenced_table and
+                      table.name != fks[0].referenced_table and
+                      table.name != fks[1].referenced_table)
+        return is_through, self.is_explicit_through_table(table) 
+    
+    def is_explicit_through_table(self, table):
+        return len(table.columns) > 3
     
     def filter_tables(self):
         if self.filter is not None:
@@ -151,7 +158,7 @@ class DjangoExporter:
             if len(fk.columns) == 1 and column.name == fk.columns[0]:
                 class_name = self.build_class_name(fk.referenced_table)
                 args = column.name.split('_')[0], class_name
-                return '%s = models.ForeignKey(%s)\n' % args
+                return "%s = models.ForeignKey('%s')\n" % args
     
     def build_varchar_field(self, column):
         length = int(column.type.split('(')[1][:-1])
