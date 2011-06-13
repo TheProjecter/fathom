@@ -628,6 +628,12 @@ SELECT index_name, table_name, uniqueness
 FROM user_indexes
 """
 
+    _INDEX_COLUMNS_SQL = """
+SELECT column_name
+FROM user_ind_columns
+WHERE index_name = '%s'
+"""
+
     _TRIGGER_INFO_SQL = """
 SELECT table_name, trigger_type, triggering_event
 FROM user_triggers
