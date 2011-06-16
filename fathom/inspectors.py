@@ -655,8 +655,8 @@ WHERE constraint_name = upper('%s')
 ORDER BY position
 """
 
-    def __init__(self, *db_params):
-        DatabaseInspector.__init__(self, *db_params)
+    def __init__(self, *args, **kwargs):
+        DatabaseInspector.__init__(self, *args, **kwargs)
         import cx_Oracle
         self._api = cx_Oracle
         
