@@ -867,7 +867,7 @@ CREATE PROCEDURE simple_proc(suchar IN OUT VARCHAR2) IS
 
     def setUp(self):
         AbstractDatabaseTestCase.setUp(self)
-        self.db = get_oracle_database(user=self.USER, password=self.PASSWORD)
+        self.db = get_oracle_database(self.USER, self.PASSWORD)
 
     def test_case_sensitivity(self):
         self.assertEqual(self.db.case_sensitivity, 

@@ -14,8 +14,8 @@ def get_postgresql_database(args):
 def get_mysql_database(**kwargs):
     return Database(name=kwargs['db'], inspector=MySqlInspector(**kwargs))
     
-def get_oracle_database(user, password):
-    return Database(inspector=OracleInspector(user, password))
+def get_oracle_database(*args, **kwargs):
+    return Database(inspector=OracleInspector(*args, **kwargs))
 
 TYPE_TO_FUNCTION = {
     'Sqlite3': get_sqlite3_database,
