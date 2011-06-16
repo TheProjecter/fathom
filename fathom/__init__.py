@@ -15,7 +15,11 @@ def get_mysql_database(**kwargs):
     return Database(name=kwargs['db'], inspector=MySqlInspector(**kwargs))
     
 def get_oracle_database(*args, **kwargs):
-    return Database(inspector=OracleInspector(*args, **kwargs))
+    user = kwargs.get('user', None) or args[0]
+    dsn = kwargs.get('dsn', None)
+    dsn = args[2] if (dsn is None and len(args) > 2) else None
+    name = (user + '/' + dsn) if dsn is not None else user
+    return Database(name=name, inspector=OracleInspector(*args, **kwargs))
 
 TYPE_TO_FUNCTION = {
     'Sqlite3': get_sqlite3_database,
