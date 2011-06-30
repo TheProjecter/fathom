@@ -12,6 +12,12 @@ def get_postgresql_database(args):
     return Database(name=args, inspector=PostgresInspector(args))
 
 def get_mysql_database(**kwargs):
+    try:
+        kwargs['port'] = int(kwargs['port'])
+    except KeyError:
+        pass
+    except ValueError:
+        raise FathomError('Port argument must be a number!')
     return Database(name=kwargs['db'], inspector=MySqlInspector(**kwargs))
     
 def get_oracle_database(*args, **kwargs):
