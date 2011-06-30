@@ -465,7 +465,7 @@ FROM information_schema.triggers
 SELECT column_name, data_type, character_maximum_length, is_nullable, 
        column_default
 FROM information_schema.columns
-WHERE table_name = '%s'
+WHERE table_name = '%s' AND table_schema = '%s'
 """
 
     _INDEX_NAMES_SQL = """
@@ -511,6 +511,16 @@ WHERE table_name = '%s'
         except Exception as e:
             print('Warning: failed to obtain MySQL version; assuming 5.0')
             self.version = (5, 0)
+
+    def build_columns(self, schema_object):
+        sql = self._COLUMN_NAMES_SQL % (schema_object.name, 
+                                        schema_object.database.name)
+        columns = {}
+        for row in self._select(sql):
+            case_sensitve = self.CASE_SENSITIVITY != constants.CASE_INSENSITIVE
+            name = (row[0] if case_sensitve else row[0].lower())
+            columns[name] = self.prepare_column(row)
+        schema_object.columns = columns
 
     def prepare_procedure(self, row):
         procedure = Procedure(row[0], inspector=self)
