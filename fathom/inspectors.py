@@ -471,6 +471,7 @@ WHERE table_name = '%s' AND table_schema = '%s'
     _INDEX_NAMES_SQL = """
 SELECT index_name, table_name, non_unique
 FROM information_schema.statistics
+WHERE table_schema = '%s'
 """
 
     _INDEX_COLUMNS_SQL = """
@@ -492,6 +493,7 @@ WHERE table_name = '%s'
     
     def __init__(self, *args, **kwargs):
         DatabaseInspector.__init__(self, *args, **kwargs)
+        self._db_name = kwargs['db']
         try:
             import MySQLdb
             self._api = MySQLdb
@@ -511,6 +513,12 @@ WHERE table_name = '%s'
         except Exception as e:
             print('Warning: failed to obtain MySQL version; assuming 5.0')
             self.version = (5, 0)
+
+    def get_indices(self):
+        '''Return names of all indices in the database.'''
+        sql = self._INDEX_NAMES_SQL % self._db_name
+        return dict(self.prepare_index(row)
+                    for row in self._select(sql))
 
     def build_columns(self, schema_object):
         sql = self._COLUMN_NAMES_SQL % (schema_object.name, 
