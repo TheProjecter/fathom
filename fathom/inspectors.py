@@ -476,7 +476,7 @@ FROM information_schema.statistics
     _INDEX_COLUMNS_SQL = """
 SELECT column_name
 FROM information_schema.statistics
-WHERE index_name = '%s'
+WHERE index_name = '%s' AND table_schema = '%s'
 """
 
     _VERSION_SQL = """
@@ -533,6 +533,10 @@ WHERE table_name = '%s'
         procedure.sql = row[2]
         procedure._private['arg_type_oids'] = row[1]
         return row[0], procedure
+        
+    def get_index_columns(self, index):
+        sql = self._INDEX_COLUMNS_SQL % (index.base_name, index.database.name)
+        return tuple(row[0] for row in self._select(sql))          
         
     def prepare_index(self, row):
         name = '%s: %s' % (row[1], row[0])

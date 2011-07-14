@@ -393,6 +393,7 @@ FOR EACH ROW BEGIN INSERT INTO one_column values(3); END'''
     def test_index_one_column_index(self):
         index = self.db.indices[self.case('one_column: one_column_index')]
         self.assertEqual(index.database, self.db)
+        self.assertEqual(index.columns, ('col',))
         self.assertFalse(index.is_unique)
         
     # procedure tests
